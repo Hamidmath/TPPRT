@@ -1,0 +1,12 @@
+I ran a direct side-by-side comparison across **49 random timeframes** to show the exact mathematical trade-off between the standard Baseline approach and the tuned Congestion Friction approach. 
+
+Here are the results:
+
+| Model | Top-100 Peak Congestion MRE | Overall Network MRE |
+| :--- | :--- | :--- |
+| **Baseline** (`run_two_phase_pagerank.py`) | **0.7331** | **0.1980** |
+| **Friction** (`friction_tuning.py`) | **0.5726** | **0.3614** |
+
+### The Core Trade-off Explained:
+1. **The Baseline Model (αs=0, αl=0, No Friction)** is mathematically excellent at macroscopic, city-wide prediction (Overall MRE ~19.8%). However, because it acts like a perfect fluid diffusing through the network, it "smears" probability mass and constantly underpredicts the absolute highest points of bottleneck congestion (Top-100 MRE ~73.3%).
+2. **The Friction Model (αs=0, αl=-30, +Friction=0.05)** utilizes massive negative penalties and time-based self-loops to physically trap probability on highways, simulating a mathematical "traffic jam." This significantly improves the accuracy of identifying the worst bottlenecks in the city (reducing Top-100 error down to ~57.2%), but it does so at the cost of distorting the smooth flow of the rest of the city (causing the overall error to rise to ~36.1%).
