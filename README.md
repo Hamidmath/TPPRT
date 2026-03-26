@@ -15,7 +15,7 @@ To resolve this, we introduced a physical constraint to the transition matrix $P
 
 For every link $i$, a self-loop is added to the transition matrix, dictating the fraction of traffic that *stays* on the link during an iteration. This self-loop weight is directly proportional to the physical time required to traverse the link:
 
-$$ \text{self\_weight}_i = \mu \cdot \frac{\text{length}_i}{\text{speed}_i} $$
+$$ \text{self-weight}_i = \mu \cdot \frac{\text{length}_i}{\text{speed}_i} $$
 
 Where $\mu$ (mu) is the global scaling parameter that dictates the strength of the dwell time. By setting $\mu = 20$, long highways naturally retain upwards of 99% of their probability mass per step, approximating a **continuous-time Markov chain**. Over the course of the Power Iteration, this allows realistic traffic bottlenecks to emerge purely through network topology and physical dimensions.
 
