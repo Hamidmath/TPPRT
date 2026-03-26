@@ -657,6 +657,62 @@ def fig_raw_vs_smoothed_mre():
     print("  fig15_raw_vs_smoothed_mre")
 
 
+# ─────────────────────────────────────────────────────────────
+# Figure 16 – Independent verification: fine-grid γ experiment
+# ─────────────────────────────────────────────────────────────
+def fig_verification():
+    ver_path = os.path.join(PROJ_ROOT, "smoothing_justification",
+                            "verification_results.json")
+    orig_path = os.path.join(PROJ_ROOT, "smoothing_justification",
+                             "smoothing_grid_search_results.json")
+    with open(ver_path) as f:
+        v = json.load(f)
+    with open(orig_path) as f:
+        o = json.load(f)
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+
+    # Left: MSE comparison
+    ax = axes[0]
+    o_mse = np.array(o["mse_raw"]); v_mse = np.array(v["mse_raw"])
+    ax.plot(o["gammas"], (o_mse / o_mse.min() - 1) * 100, "o-",
+            color="#1565C0", lw=2, ms=6,
+            label=f"Original (seed=42, {o['splits_used']} splits)")
+    ax.plot(v["gammas"], (v_mse / v_mse.min() - 1) * 100, "s-",
+            color="#E91E63", lw=2, ms=6,
+            label=f"Verification (seed=123, {v['splits_used']} splits)")
+    ax.axvline(0.26, ls="--", color="#4CAF50", lw=1.5, label="$\\gamma = 0.26$")
+    ax.axvspan(0.22, 0.30, alpha=0.1, color="#4CAF50")
+    ax.set_xlabel("Smoothing factor $\\gamma$", fontsize=12)
+    ax.set_ylabel("Relative MSE increase over minimum (%)", fontsize=12)
+    ax.set_title("Predictive MSE: Two Independent Experiments")
+    ax.legend(fontsize=8.5)
+    ax.grid(True, alpha=0.3)
+
+    # Right: Correlation comparison
+    ax = axes[1]
+    ax.plot(o["gammas"], o["corr_raw"], "o-", color="#1565C0", lw=2, ms=6,
+            label=f"Original (seed=42, {o['splits_used']} splits)")
+    ax.plot(v["gammas"], v["corr_raw"], "s-", color="#E91E63", lw=2, ms=6,
+            label=f"Verification (seed=123, {v['splits_used']} splits)")
+    ax.axvline(0.26, ls="--", color="#4CAF50", lw=1.5, label="$\\gamma = 0.26$")
+    ax.axvspan(0.22, 0.30, alpha=0.1, color="#4CAF50")
+    ax.set_xlabel("Smoothing factor $\\gamma$", fontsize=12)
+    ax.set_ylabel("Pearson correlation $r$", fontsize=12)
+    ax.set_title("Pearson Correlation: Two Independent Experiments")
+    ax.legend(fontsize=8.5)
+    ax.grid(True, alpha=0.3)
+
+    fig.suptitle("Independent Verification of Optimal $\\gamma^*$\n"
+                 "(green band = optimal plateau $\\gamma \\in [0.22,\\, 0.30]$)",
+                 fontsize=12, y=1.02)
+    fig.tight_layout()
+    fig.savefig(os.path.join(OUT, "fig16_verification.pdf"), bbox_inches="tight")
+    fig.savefig(os.path.join(OUT, "fig16_verification.png"), bbox_inches="tight")
+    plt.close(fig)
+    print("  fig16_verification")
+
+
 if __name__ == "__main__":
     print(f"Writing figures to: {OUT}\n")
     fig_selfloop_vs_traversal()
@@ -675,4 +731,5 @@ if __name__ == "__main__":
     fig_cv_downstream_variance()
     fig_bias_variance_decomp()
     fig_raw_vs_smoothed_mre()
+    fig_verification()
     print("\nAll figures generated successfully.")

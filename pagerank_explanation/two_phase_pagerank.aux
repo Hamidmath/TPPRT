@@ -10,79 +10,117 @@
 \providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
 \newlabel{fig:pipeline}{{1}{4}{End-to-end data pipeline: raw GPS trajectories are smoothed with graph-diffusion ($\gamma =0.26$) before being used as a teleportation vector in the Two-Phase PageRank power iteration}{figure.caption.2}{}}
 \@writefile{toc}{\contentsline {section}{\numberline {2}Data Pre-Processing: Spatial Smoothing}{4}{section.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}The Sparsity Problem}{4}{subsection.2.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Laplace Pseudo-Count}{4}{subsection.2.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.3}Graph-Diffusion Smoothing}{4}{subsection.2.3}\protected@file@percent }
-\newlabel{eq:smoothing}{{3}{5}{Graph-Diffusion Smoothing}{equation.2.3}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.4}Optimal Smoothing Parameter via Cross-Validation}{5}{subsection.2.4}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Cross-validation results for graph-diffusion smoothing.}}{5}{table.caption.3}\protected@file@percent }
-\newlabel{tab:smoothing}{{1}{5}{Cross-validation results for graph-diffusion smoothing}{table.caption.3}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Bias-variance tradeoff: both predictive MSE (left) and downstream PageRank MSE (right) are minimised at $\gamma ^*=0.26$.}}{6}{figure.caption.4}\protected@file@percent }
-\newlabel{fig:smoothing}{{2}{6}{Bias-variance tradeoff: both predictive MSE (left) and downstream PageRank MSE (right) are minimised at $\gamma ^*=0.26$}{figure.caption.4}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {3}The Core Physical Fix: Travel-Time Self-Loops}{6}{section.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Mathematical Definition}{6}{subsection.3.1}\protected@file@percent }
-\newlabel{eq:selfloop}{{6}{6}{Mathematical Definition}{equation.3.6}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}The Normalised Transition Matrix $P$}{6}{subsection.3.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Worked Examples}{7}{subsection.3.3}\protected@file@percent }
-\newlabel{ex:highway}{{3.1}{7}{Highway Segment}{example.3.1}{}}
-\newlabel{ex:connector}{{3.2}{7}{Short Connector}{example.3.2}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.4}Self-Loop Probability as a Function of Traversal Time}{7}{subsection.3.4}\protected@file@percent }
-\newlabel{eq:pii_formula}{{11}{7}{}{equation.3.11}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Self-loop probability $P_{ii}$ vs.\ traversal time $t_i$ for various $\mu $ (3 outgoing edges assumed). Higher $\mu $ amplifies the dwell-time effect.}}{8}{figure.caption.5}\protected@file@percent }
-\newlabel{fig:selfloop}{{3}{8}{Self-loop probability $P_{ii}$ vs.\ traversal time $t_i$ for various $\mu $ (3 outgoing edges assumed). Higher $\mu $ amplifies the dwell-time effect}{figure.caption.5}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Fraction of initial probability mass retained on a link over power iterations. The no-self-loop baseline ($\mu =0$) immediately drops to zero, while the highway segment retains $\sim \!47\%$ after 100 steps.}}{8}{figure.caption.6}\protected@file@percent }
-\newlabel{fig:mass}{{4}{8}{Fraction of initial probability mass retained on a link over power iterations. The no-self-loop baseline ($\mu =0$) immediately drops to zero, while the highway segment retains $\sim \!47\%$ after 100 steps}{figure.caption.6}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {4}The Two-Phase Network: $2N \times 2N$ Block Matrix}{9}{section.4}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Motivation for Two Phases}{9}{subsection.4.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Block Matrix Construction}{9}{subsection.4.2}\protected@file@percent }
-\newlabel{eq:block}{{13}{9}{Block Matrix Construction}{equation.4.13}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Interpretation of Each Block}{9}{subsection.4.3}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Semantic interpretation of each $N\!\times \!N$ block of $M_{2N}$.}}{9}{table.caption.7}\protected@file@percent }
-\newlabel{tab:blocks}{{2}{9}{Semantic interpretation of each $N\!\times \!N$ block of $M_{2N}$}{table.caption.7}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.4}Row-Stochasticity of $M_{2N}$}{9}{subsection.4.4}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Visual structure of the $2N \times 2N$ block transition matrix. The bottom-left block is identically zero, enforcing the one-way phase transition.}}{10}{figure.caption.8}\protected@file@percent }
-\newlabel{fig:block}{{5}{10}{Visual structure of the $2N \times 2N$ block transition matrix. The bottom-left block is identically zero, enforcing the one-way phase transition}{figure.caption.8}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.5}Effect of $\beta $ on Phase Dynamics}{10}{subsection.4.5}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {5}The Teleportation Vector $E_{2N}$}{10}{section.5}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Role of Teleportation in PageRank}{10}{subsection.5.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Constructing $E_{2N}$}{11}{subsection.5.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Deprecated Enhancement Parameters}{11}{subsection.5.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {6}The Power Iteration Algorithm}{11}{section.6}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {6.1}PageRank Update Rule}{11}{subsection.6.1}\protected@file@percent }
-\newlabel{eq:pagerank}{{17}{11}{PageRank Update Rule}{equation.6.17}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {6.2}Expanded Form}{12}{subsection.6.2}\protected@file@percent }
-\newlabel{eq:up}{{18}{12}{Expanded Form}{equation.6.18}{}}
-\newlabel{eq:down}{{19}{12}{Expanded Form}{equation.6.19}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {6.3}Pseudocode}{12}{subsection.6.3}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces Pseudocode for the Two-Phase PageRank power iteration.}}{12}{figure.caption.9}\protected@file@percent }
-\newlabel{alg:pagerank}{{6}{12}{Pseudocode for the Two-Phase PageRank power iteration}{figure.caption.9}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {6.4}Convergence Analysis}{12}{subsection.6.4}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces Simulated convergence curves (L1 norm of consecutive differences). Higher $\mu $ increases the effective spectral gap, leading to faster convergence compared to standard PageRank.}}{13}{figure.caption.10}\protected@file@percent }
-\newlabel{fig:convergence}{{7}{13}{Simulated convergence curves (L1 norm of consecutive differences). Higher $\mu $ increases the effective spectral gap, leading to faster convergence compared to standard PageRank}{figure.caption.10}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {7}Extracting the Final Traffic Distribution}{13}{section.7}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {8}Parameter Study and Empirical Results}{13}{section.8}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {8.1}Baseline: Standard PageRank ($\mu = 0$)}{13}{subsection.8.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {8.2}Effect of the Dwell-Time Parameter $\mu $}{14}{subsection.8.2}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces Top-100 MRE and Overall MRE as a function of $\mu $ for optimal values of $d$ and $\beta $. The improvement is monotonic and asymptotes near $\mu =20$.}}{14}{figure.caption.11}\protected@file@percent }
-\newlabel{fig:mu}{{8}{14}{Top-100 MRE and Overall MRE as a function of $\mu $ for optimal values of $d$ and $\beta $. The improvement is monotonic and asymptotes near $\mu =20$}{figure.caption.11}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {8.3}Full Parameter Grid Search}{14}{subsection.8.3}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {9}{\ignorespaces Heatmap of Top-100 MRE for $d=0.80$ over all tested $(\mu , \beta )$ pairs. The star marks the global optimum at $\mu =20,\tmspace  +\thickmuskip {.2777em}\beta =0.90$.}}{15}{figure.caption.12}\protected@file@percent }
-\newlabel{fig:heatmap}{{9}{15}{Heatmap of Top-100 MRE for $d=0.80$ over all tested $(\mu , \beta )$ pairs. The star marks the global optimum at $\mu =20,\;\beta =0.90$}{figure.caption.12}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Top-10 best parameter configurations from the full tuning sweep.}}{15}{table.caption.13}\protected@file@percent }
-\newlabel{tab:top10}{{3}{15}{Top-10 best parameter configurations from the full tuning sweep}{table.caption.13}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {8.4}Sensitivity to Damping Factor $d$}{15}{subsection.8.4}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {10}{\ignorespaces Sensitivity of Top-100 and Overall MRE to the damping factor $d$ and phase-transition rate $\beta $, with $\mu =20$ fixed.}}{16}{figure.caption.14}\protected@file@percent }
-\newlabel{fig:damping}{{10}{16}{Sensitivity of Top-100 and Overall MRE to the damping factor $d$ and phase-transition rate $\beta $, with $\mu =20$ fixed}{figure.caption.14}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {8.5}Before vs.\ After: Summary of Improvement}{16}{subsection.8.5}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {11}{\ignorespaces Bar chart comparing baseline (standard PageRank) against the optimised Two-Phase $+$ Self-Loop model. The 95.7\% Top-100 improvement is simultaneous with a 76.2\% overall improvement.}}{16}{figure.caption.15}\protected@file@percent }
-\newlabel{fig:before_after}{{11}{16}{Bar chart comparing baseline (standard PageRank) against the optimised Two-Phase $+$ Self-Loop model. The 95.7\% Top-100 improvement is simultaneous with a 76.2\% overall improvement}{figure.caption.15}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {9}Physical Interpretation and Theoretical Connections}{17}{section.9}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {9.1}Connection to Continuous-Time Markov Chains}{17}{subsection.9.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {9.2}Why $\mu =20$ Is Near-Optimal}{17}{subsection.9.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {9.3}The Two-Phase Structure as Absorption}{17}{subsection.9.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {9.4}Physical Interpretation of the Two Phases}{17}{subsection.9.4}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {10}Complete Mathematical Summary}{18}{section.10}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Complete parameter reference for the Two-Phase PageRank algorithm.}}{18}{table.caption.16}\protected@file@percent }
-\newlabel{tab:params}{{4}{18}{Complete parameter reference for the Two-Phase PageRank algorithm}{table.caption.16}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {11}Conclusion}{18}{section.11}\protected@file@percent }
-\gdef \@abspage@last{19}
+\newlabel{sec:smoothing}{{2}{4}{Data Pre-Processing: Spatial Smoothing}{section.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}The Sparsity Problem: Quantification and Consequences}{4}{subsection.2.1}\protected@file@percent }
+\newlabel{sec:sparsity}{{2.1}{4}{The Sparsity Problem: Quantification and Consequences}{subsection.2.1}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Distribution of observation coverage across all 15-minute timeframes in the dataset. The left panel shows absolute counts; the right panel shows the percentage of the network observed. Most timeframes cover only a tiny fraction of the graph.}}{4}{figure.caption.3}\protected@file@percent }
+\newlabel{fig:sparsity}{{2}{4}{Distribution of observation coverage across all 15-minute timeframes in the dataset. The left panel shows absolute counts; the right panel shows the percentage of the network observed. Most timeframes cover only a tiny fraction of the graph}{figure.caption.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Step 1: Laplace Pseudo-Count}{5}{subsection.2.2}\protected@file@percent }
+\newlabel{sec:laplace}{{2.2}{5}{Step 1: Laplace Pseudo-Count}{subsection.2.2}{}}
+\newlabel{eq:laplace}{{1}{5}{Step 1: Laplace Pseudo-Count}{equation.2.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.3}Step 2: Graph-Diffusion Smoothing}{5}{subsection.2.3}\protected@file@percent }
+\newlabel{sec:diffusion}{{2.3}{5}{Step 2: Graph-Diffusion Smoothing}{subsection.2.3}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {2.3.1}Definition}{6}{subsubsection.2.3.1}\protected@file@percent }
+\newlabel{eq:smoothing}{{4}{6}{Definition}{equation.2.4}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {2.3.2}Interpretation as a Graph Filter}{6}{subsubsection.2.3.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {2.3.3}Mass Conservation}{6}{subsubsection.2.3.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.4}Theoretical Justification: The Bias-Variance Tradeoff}{7}{subsection.2.4}\protected@file@percent }
+\newlabel{sec:bv_theory}{{2.4}{7}{Theoretical Justification: The Bias-Variance Tradeoff}{subsection.2.4}{}}
+\newlabel{eq:bv_decomp}{{8}{7}{Bias and Variance of the Smoothed Estimator}{equation.2.8}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Normalised bias-variance decomposition from cross-validation data. The blue curve (variance proxy) decreases monotonically with $\gamma $; the orange curve (bias proxy) increases monotonically; the purple curve (total MSE, normalised) shows the U-shaped tradeoff with minimum at $\gamma ^* = 0.26$.}}{7}{figure.caption.4}\protected@file@percent }
+\newlabel{fig:bvtradeoff}{{3}{7}{Normalised bias-variance decomposition from cross-validation data. The blue curve (variance proxy) decreases monotonically with $\gamma $; the orange curve (bias proxy) increases monotonically; the purple curve (total MSE, normalised) shows the U-shaped tradeoff with minimum at $\gamma ^* = 0.26$}{figure.caption.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.5}Empirical Validation: Cross-Validation Protocol}{8}{subsection.2.5}\protected@file@percent }
+\newlabel{sec:cv_protocol}{{2.5}{8}{Empirical Validation: Cross-Validation Protocol}{subsection.2.5}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {2.5.1}Protocol}{8}{subsubsection.2.5.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.6}Cross-Validation Results}{8}{subsection.2.6}\protected@file@percent }
+\newlabel{sec:cv_results}{{2.6}{8}{Cross-Validation Results}{subsection.2.6}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Complete cross-validation results for graph-diffusion smoothing (49 Monte Carlo split-half trials).}}{9}{table.caption.5}\protected@file@percent }
+\newlabel{tab:smoothing_full}{{1}{9}{Complete cross-validation results for graph-diffusion smoothing (49 Monte Carlo split-half trials)}{table.caption.5}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Cross-validation: held-out predictive MSE and Pearson correlation vs.\ $\gamma $ (dual-axis). Both metrics are jointly optimised at $\gamma ^* = 0.26$.}}{10}{figure.caption.6}\protected@file@percent }
+\newlabel{fig:cv_mse_corr}{{4}{10}{Cross-validation: held-out predictive MSE and Pearson correlation vs.\^^M$\gamma $ (dual-axis). Both metrics are jointly optimised at $\gamma ^* = 0.26$}{figure.caption.6}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Downstream PageRank MSE and fraction of signal variance retained as a function of $\gamma $. The PageRank MSE minimum coincides with the direct prediction MSE minimum, confirming that the smoothing level is compatible with the downstream solver.}}{10}{figure.caption.7}\protected@file@percent }
+\newlabel{fig:cv_downstream}{{5}{10}{Downstream PageRank MSE and fraction of signal variance retained as a function of $\gamma $. The PageRank MSE minimum coincides with the direct prediction MSE minimum, confirming that the smoothing level is compatible with the downstream solver}{figure.caption.7}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces Predictive MSE and downstream PageRank MSE side by side, both minimised at $\gamma ^*=0.26$.}}{11}{figure.caption.8}\protected@file@percent }
+\newlabel{fig:smoothing_tradeoff}{{6}{11}{Predictive MSE and downstream PageRank MSE side by side, both minimised at $\gamma ^*=0.26$}{figure.caption.8}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.7}Impact on the Downstream Model}{11}{subsection.2.7}\protected@file@percent }
+\newlabel{sec:downstream_impact}{{2.7}{11}{Impact on the Downstream Model}{subsection.2.7}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Downstream impact: average MRE across 490 timeframes.}}{11}{table.caption.9}\protected@file@percent }
+\newlabel{tab:downstream}{{2}{11}{Downstream impact: average MRE across 490 timeframes}{table.caption.9}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces Per-timeframe MRE comparison across 490 windows. \textbf  {Left:} log-scale histogram showing the raw pipeline clustered around MRE~$\approx 7{,}000$ while the smoothed pipeline achieves MRE~$\approx 0.19$. \textbf  {Right:} sorted per-timeframe comparison showing a consistent $\sim \!4$ orders-of-magnitude gap.}}{12}{figure.caption.10}\protected@file@percent }
+\newlabel{fig:raw_vs_smooth}{{7}{12}{Per-timeframe MRE comparison across 490 windows. \textbf {Left:} log-scale histogram showing the raw pipeline clustered around MRE~$\approx 7{,}000$ while the smoothed pipeline achieves MRE~$\approx 0.19$. \textbf {Right:} sorted per-timeframe comparison showing a consistent $\sim \!4$ orders-of-magnitude gap}{figure.caption.10}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.8}Independent Verification of $\gamma ^* = 0.26$}{12}{subsection.2.8}\protected@file@percent }
+\newlabel{sec:verification}{{2.8}{12}{Independent Verification of $\gamma ^* = 0.26$}{subsection.2.8}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Verification CV results (seed = 123, 80 splits, 17 $\gamma $ values).}}{13}{table.caption.11}\protected@file@percent }
+\newlabel{tab:verify}{{3}{13}{Verification CV results (seed = 123, 80 splits, 17 $\gamma $ values)}{table.caption.11}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces Independent verification on a finer $\gamma $ grid. Both experiments (blue = original, pink = verification) agree on the location and breadth of the optimal plateau. The green band marks $\gamma \in [0.22,\,0.30]$.}}{13}{figure.caption.12}\protected@file@percent }
+\newlabel{fig:verification}{{8}{13}{Independent verification on a finer $\gamma $ grid. Both experiments (blue = original, pink = verification) agree on the location and breadth of the optimal plateau. The green band marks $\gamma \in [0.22,\,0.30]$}{figure.caption.12}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.9}Summary of the Smoothing Justification}{14}{subsection.2.9}\protected@file@percent }
+\newlabel{sec:smooth_summary}{{2.9}{14}{Summary of the Smoothing Justification}{subsection.2.9}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {3}The Core Physical Fix: Travel-Time Self-Loops}{14}{section.3}\protected@file@percent }
+\newlabel{sec:selfloop}{{3}{14}{The Core Physical Fix: Travel-Time Self-Loops}{section.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Mathematical Definition}{14}{subsection.3.1}\protected@file@percent }
+\newlabel{eq:selfloop}{{10}{14}{Mathematical Definition}{equation.3.10}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}The Normalised Transition Matrix $P$}{14}{subsection.3.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Worked Examples}{15}{subsection.3.3}\protected@file@percent }
+\newlabel{ex:highway}{{3.1}{15}{Highway Segment}{example.3.1}{}}
+\newlabel{ex:connector}{{3.2}{15}{Short Connector}{example.3.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4}Self-Loop Probability as a Function of Traversal Time}{15}{subsection.3.4}\protected@file@percent }
+\newlabel{eq:pii_formula}{{15}{15}{}{equation.3.15}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {9}{\ignorespaces Self-loop probability $P_{ii}$ vs.\ traversal time $t_i$ for various $\mu $ (3 outgoing edges assumed). Higher $\mu $ amplifies the dwell-time effect.}}{16}{figure.caption.13}\protected@file@percent }
+\newlabel{fig:selfloop}{{9}{16}{Self-loop probability $P_{ii}$ vs.\ traversal time $t_i$ for various $\mu $ (3 outgoing edges assumed). Higher $\mu $ amplifies the dwell-time effect}{figure.caption.13}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {10}{\ignorespaces Fraction of initial probability mass retained on a link over power iterations. The no-self-loop baseline ($\mu =0$) immediately drops to zero, while the highway segment retains $\sim \!47\%$ after 100 steps.}}{16}{figure.caption.14}\protected@file@percent }
+\newlabel{fig:mass}{{10}{16}{Fraction of initial probability mass retained on a link over power iterations. The no-self-loop baseline ($\mu =0$) immediately drops to zero, while the highway segment retains $\sim \!47\%$ after 100 steps}{figure.caption.14}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {4}The Two-Phase Network: $2N \times 2N$ Block Matrix}{17}{section.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Motivation for Two Phases}{17}{subsection.4.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Block Matrix Construction}{17}{subsection.4.2}\protected@file@percent }
+\newlabel{eq:block}{{17}{17}{Block Matrix Construction}{equation.4.17}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Interpretation of Each Block}{17}{subsection.4.3}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Semantic interpretation of each $N\!\times \!N$ block of $M_{2N}$.}}{17}{table.caption.15}\protected@file@percent }
+\newlabel{tab:blocks}{{4}{17}{Semantic interpretation of each $N\!\times \!N$ block of $M_{2N}$}{table.caption.15}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.4}Row-Stochasticity of $M_{2N}$}{17}{subsection.4.4}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {11}{\ignorespaces Visual structure of the $2N \times 2N$ block transition matrix. The bottom-left block is identically zero, enforcing the one-way phase transition.}}{18}{figure.caption.16}\protected@file@percent }
+\newlabel{fig:block}{{11}{18}{Visual structure of the $2N \times 2N$ block transition matrix. The bottom-left block is identically zero, enforcing the one-way phase transition}{figure.caption.16}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.5}Effect of $\beta $ on Phase Dynamics}{18}{subsection.4.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {5}The Teleportation Vector $E_{2N}$}{18}{section.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Role of Teleportation in PageRank}{18}{subsection.5.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Constructing $E_{2N}$}{19}{subsection.5.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Deprecated Enhancement Parameters}{19}{subsection.5.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {6}The Power Iteration Algorithm}{19}{section.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.1}PageRank Update Rule}{19}{subsection.6.1}\protected@file@percent }
+\newlabel{eq:pagerank}{{21}{19}{PageRank Update Rule}{equation.6.21}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.2}Expanded Form}{20}{subsection.6.2}\protected@file@percent }
+\newlabel{eq:up}{{22}{20}{Expanded Form}{equation.6.22}{}}
+\newlabel{eq:down}{{23}{20}{Expanded Form}{equation.6.23}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.3}Pseudocode}{20}{subsection.6.3}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {12}{\ignorespaces Pseudocode for the Two-Phase PageRank power iteration.}}{20}{figure.caption.17}\protected@file@percent }
+\newlabel{alg:pagerank}{{12}{20}{Pseudocode for the Two-Phase PageRank power iteration}{figure.caption.17}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.4}Convergence Analysis}{20}{subsection.6.4}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {13}{\ignorespaces Simulated convergence curves (L1 norm of consecutive differences). Higher $\mu $ increases the effective spectral gap, leading to faster convergence compared to standard PageRank.}}{21}{figure.caption.18}\protected@file@percent }
+\newlabel{fig:convergence}{{13}{21}{Simulated convergence curves (L1 norm of consecutive differences). Higher $\mu $ increases the effective spectral gap, leading to faster convergence compared to standard PageRank}{figure.caption.18}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {7}Extracting the Final Traffic Distribution}{21}{section.7}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {8}Parameter Study and Empirical Results}{21}{section.8}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {8.1}Baseline: Standard PageRank ($\mu = 0$)}{21}{subsection.8.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {8.2}Effect of the Dwell-Time Parameter $\mu $}{22}{subsection.8.2}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {14}{\ignorespaces Top-100 MRE and Overall MRE as a function of $\mu $ for optimal values of $d$ and $\beta $. The improvement is monotonic and asymptotes near $\mu =20$.}}{22}{figure.caption.19}\protected@file@percent }
+\newlabel{fig:mu}{{14}{22}{Top-100 MRE and Overall MRE as a function of $\mu $ for optimal values of $d$ and $\beta $. The improvement is monotonic and asymptotes near $\mu =20$}{figure.caption.19}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {8.3}Full Parameter Grid Search}{22}{subsection.8.3}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {15}{\ignorespaces Heatmap of Top-100 MRE for $d=0.80$ over all tested $(\mu , \beta )$ pairs. The star marks the global optimum at $\mu =20,\tmspace  +\thickmuskip {.2777em}\beta =0.90$.}}{23}{figure.caption.20}\protected@file@percent }
+\newlabel{fig:heatmap}{{15}{23}{Heatmap of Top-100 MRE for $d=0.80$ over all tested $(\mu , \beta )$ pairs. The star marks the global optimum at $\mu =20,\;\beta =0.90$}{figure.caption.20}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces Top-10 best parameter configurations from the full tuning sweep.}}{23}{table.caption.21}\protected@file@percent }
+\newlabel{tab:top10}{{5}{23}{Top-10 best parameter configurations from the full tuning sweep}{table.caption.21}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {8.4}Sensitivity to Damping Factor $d$}{23}{subsection.8.4}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {16}{\ignorespaces Sensitivity of Top-100 and Overall MRE to the damping factor $d$ and phase-transition rate $\beta $, with $\mu =20$ fixed.}}{24}{figure.caption.22}\protected@file@percent }
+\newlabel{fig:damping}{{16}{24}{Sensitivity of Top-100 and Overall MRE to the damping factor $d$ and phase-transition rate $\beta $, with $\mu =20$ fixed}{figure.caption.22}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {8.5}Before vs.\ After: Summary of Improvement}{24}{subsection.8.5}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {17}{\ignorespaces Bar chart comparing baseline (standard PageRank) against the optimised Two-Phase $+$ Self-Loop model. The 95.7\% Top-100 improvement is simultaneous with a 76.2\% overall improvement.}}{24}{figure.caption.23}\protected@file@percent }
+\newlabel{fig:before_after}{{17}{24}{Bar chart comparing baseline (standard PageRank) against the optimised Two-Phase $+$ Self-Loop model. The 95.7\% Top-100 improvement is simultaneous with a 76.2\% overall improvement}{figure.caption.23}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {9}Physical Interpretation and Theoretical Connections}{25}{section.9}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {9.1}Connection to Continuous-Time Markov Chains}{25}{subsection.9.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {9.2}Why $\mu =20$ Is Near-Optimal}{25}{subsection.9.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {9.3}The Two-Phase Structure as Absorption}{25}{subsection.9.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {9.4}Physical Interpretation of the Two Phases}{25}{subsection.9.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {10}Complete Mathematical Summary}{26}{section.10}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces Complete parameter reference for the Two-Phase PageRank algorithm.}}{26}{table.caption.24}\protected@file@percent }
+\newlabel{tab:params}{{6}{26}{Complete parameter reference for the Two-Phase PageRank algorithm}{table.caption.24}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {11}Conclusion}{26}{section.11}\protected@file@percent }
+\gdef \@abspage@last{27}
