@@ -2,3 +2,5 @@ venv/
 __pycache__/
 popularity_results_smoothed.npz
 data/matched_routes.json
+popularity_results_smoothed_026.npz
+popularity_results_smoothed_026.npz
