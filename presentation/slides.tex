@@ -78,23 +78,23 @@
 \begin{frame}{Two Components of the Model}
   \centering
   \begin{tikzpicture}
-    \node[draw, rounded corners, fill=accent!10, minimum width=11cm,
-          minimum height=2.6cm, align=center, font=\large] {
-      \textbf{Power Iteration:}\quad
+    \node[draw, rounded corners, fill=accent!10, minimum width=10cm,
+          minimum height=2cm, align=center] {
       $\displaystyle\mathbf{v}^{(k+1)}
-      = \underbrace{d \cdot M_{2N}^\top \cdot \mathbf{v}^{(k)}}_{\text{Transition Matrix (topology)}}
-      + \underbrace{(1-d) \cdot E_{2N}}_{\text{Teleportation Vector (ground truth)}}$
+      = \underbrace{d \cdot M_{2N}^\top \cdot \mathbf{v}^{(k)}}_{\text{Transition (topology)}}
+      + \underbrace{(1-d) \cdot E_{2N}}_{\text{Teleportation (ground truth)}}$
     };
   \end{tikzpicture}
 
-  \bigskip
+  \medskip
+  \small
   \begin{tabular}{lll}
     \toprule
     \textbf{Component} & \textbf{Built from} & \textbf{Role}\\
     \midrule
-    Transition matrix $M_{2N}$ & Road topology, lengths, speeds
+    Transition $M_{2N}$ & Road topology, lengths, speeds
       & Where vehicles \textbf{move}\\
-    Teleportation vector $E_{2N}$ & Ground-truth GPS counts
+    Teleportation $E_{2N}$ & Ground-truth GPS counts
       & Where vehicles are \textbf{born}\\
     \bottomrule
   \end{tabular}
@@ -108,33 +108,31 @@
 \begin{frame}{The Two Phases of Driving}
   Every road link $i$ has \highlight{two states}:
 
-  \bigskip
+  \medskip
   \begin{columns}[c]
-    \begin{column}{0.45\textwidth}
+    \begin{column}{0.44\textwidth}
       \centering
-      \textbf{\large Up Phase}\\[6pt]
-      Vehicle is \highlight{actively traversing} link $i$\\[4pt]
-      Stays on link proportional to\\
-      its physical travel time\\[4pt]
+      \textbf{Up Phase}\\[4pt]
+      \highlight{Actively traversing} link $i$\\[3pt]
+      Stays proportional to travel time\\[3pt]
       \good{Self-loop traps mass}
     \end{column}
-    \begin{column}{0.08\textwidth}
+    \begin{column}{0.10\textwidth}
       \centering
-      {\Huge$\xrightarrow{\;\beta\;}$}
+      {\Large$\xrightarrow{\;\beta\;}$}
     \end{column}
-    \begin{column}{0.45\textwidth}
+    \begin{column}{0.44\textwidth}
       \centering
-      \textbf{\large Down Phase}\\[6pt]
-      Vehicle is \highlight{locally dispersing}\\[4pt]
-      Moves to adjacent links\\
-      in the local neighbourhood\\[4pt]
-      Represents turning, parking, etc.
+      \textbf{Down Phase}\\[4pt]
+      \highlight{Locally dispersing}\\[3pt]
+      Moves to adjacent links\\[3pt]
+      Turning, parking, etc.
     \end{column}
   \end{columns}
 
-  \bigskip
+  \medskip
   \centering
-  $\beta = 0.90$: probability of dropping from Up to Down per step
+  $\beta = 0.90$: drop probability from Up to Down per step
 \end{frame}
 
 %─────────────────────────────────────────
@@ -167,17 +165,16 @@
 
 %─────────────────────────────────────────
 \begin{frame}{Self-Loop Probability}
-  After adding the self-loop, the row-stochastic transition for link $i$ becomes:
+  \small Row-stochastic transition after adding self-loop:
+  \vspace{-2pt}
   \[
     P_{\text{self}}(i, i) = \frac{w_i}{w_i + \deg^+(i)},
-    \qquad
+    \quad
     P_{\text{self}}(i, j) = \frac{A_{ij}}{w_i + \deg^+(i)}
   \]
-
+  \vspace{-8pt}
   \centering
-  \includegraphics[width=0.70\textwidth]{fig2_mass_retention.png}
-
-  \small Links with high $w_i$ retain most of their probability mass
+  \includegraphics[width=0.55\textwidth]{fig2_mass_retention.png}
 \end{frame}
 
 %─────────────────────────────────────────
@@ -462,18 +459,16 @@
 %─────────────────────────────────────────
 \begin{frame}{CV Results: MSE \& Correlation}
   \centering
-  \includegraphics[width=0.75\textwidth]{fig12_cv_mse_correlation.png}
+  \includegraphics[width=0.70\textwidth]{fig12_cv_mse_correlation.png}
 
-  \medskip
   Both metrics optimised at \highlight{$\gamma^* = 0.26$}
 \end{frame}
 
 %─────────────────────────────────────────
 \begin{frame}{CV Results: Downstream PageRank MSE}
   \centering
-  \includegraphics[width=0.75\textwidth]{fig13_cv_downstream_variance.png}
+  \includegraphics[width=0.70\textwidth]{fig13_cv_downstream_variance.png}
 
-  \medskip
   PageRank MSE minimum \textbf{also} at $\gamma \approx 0.26$
   $\Rightarrow$ input-optimal = output-optimal
 \end{frame}
@@ -519,9 +514,9 @@
 %─────────────────────────────────────────
 \begin{frame}{Effect of $\mu$ (Dwell-Time Scale)}
   \centering
-  \includegraphics[width=0.68\textwidth]{fig4_mre_vs_mu.png}
+  \includegraphics[width=0.64\textwidth]{fig4_mre_vs_mu.png}
 
-  \medskip
+  \smallskip
   MRE drops monotonically as $\mu$ increases.
   Optimal: \highlight{$\mu = 20$}
 \end{frame}
@@ -529,9 +524,9 @@
 %─────────────────────────────────────────
 \begin{frame}{MRE Heatmap: $\mu$ vs $\beta$}
   \centering
-  \includegraphics[width=0.62\textwidth]{fig3_mre_heatmap.png}
+  \includegraphics[width=0.58\textwidth]{fig3_mre_heatmap.png}
 
-  \medskip
+  \smallskip
   Best combination: $\mu = 20$, $\beta = 0.90$, $d = 0.80$
 \end{frame}
 
@@ -548,11 +543,10 @@
 %─────────────────────────────────────────
 \begin{frame}{Before \& After Self-Loops}
   \centering
-  \includegraphics[width=0.78\textwidth]{fig9_before_after.png}
+  \includegraphics[width=0.68\textwidth]{fig9_before_after.png}
 
-  \medskip
-  \small Self-loops \good{concentrate mass on major arterials}
-  instead of spreading it uniformly
+  Self-loops \good{concentrate mass on arterials}
+  instead of uniform spread
 \end{frame}
 
 %=================================================================

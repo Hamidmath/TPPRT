@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Debian) (preloaded format=pdflatex 2026.1.28)  27 MAR 2026 01:10
+This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Debian) (preloaded format=pdflatex 2026.1.28)  27 MAR 2026 01:14
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -970,20 +970,6 @@ Package pdftex.def Info: fig7_pipeline.png  used on input line 75.
  [4
 
  <./fig7_pipeline.png>]
-LaTeX Font Info:    Font shape `OT1/cmss/b/n' in size <14.4> not available
-(Font)              Font shape `OT1/cmss/bx/n' tried instead on input line 101.
-
-LaTeX Font Info:    Font shape `OT1/cmss/b/n' in size <10> not available
-(Font)              Font shape `OT1/cmss/bx/n' tried instead on input line 101.
-
-LaTeX Font Info:    Font shape `OT1/cmss/b/n' in size <7> not available
-(Font)              Font shape `OT1/cmss/bx/n' tried instead on input line 101.
-
-
-Overfull \hbox (40.3642pt too wide) in paragraph at lines 101--101
- [][] 
- []
-
 LaTeX Font Info:    Font shape `OT1/cmss/b/n' in size <12> not available
 (Font)              Font shape `OT1/cmss/bx/n' tried instead on input line 101.
 
@@ -993,7 +979,10 @@ LaTeX Font Info:    Font shape `OT1/cmss/b/n' in size <8> not available
 LaTeX Font Info:    Font shape `OT1/cmss/b/n' in size <6> not available
 (Font)              Font shape `OT1/cmss/bx/n' tried instead on input line 101.
 
-[5
+LaTeX Font Info:    Font shape `OT1/cmss/b/n' in size <10.95> not available
+(Font)              Font shape `OT1/cmss/bx/n' tried instead on input line 101.
+
+ [5
 
 ]
 
@@ -1008,67 +997,59 @@ Package hyperref Warning: Token not allowed in a PDF string (Unicode):
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
 (hyperref)                removing `math shift' on input line 104.
 
-LaTeX Font Info:    Font shape `OT1/cmss/b/n' in size <24.88> not available
-(Font)              Font shape `OT1/cmss/bx/n' tried instead on input line 138.
-
-LaTeX Font Info:    Font shape `OT1/cmss/b/n' in size <20.74> not available
-(Font)              Font shape `OT1/cmss/bx/n' tried instead on input line 138.
-
 LaTeX Font Info:    Font shape `OT1/cmss/b/n' in size <17.28> not available
-(Font)              Font shape `OT1/cmss/bx/n' tried instead on input line 138.
+(Font)              Font shape `OT1/cmss/bx/n' tried instead on input line 136.
 
-
-Overfull \hbox (5.7273pt too wide) in paragraph at lines 138--138
- []$[]$ 
- []
+LaTeX Font Info:    Font shape `OT1/cmss/b/n' in size <10> not available
+(Font)              Font shape `OT1/cmss/bx/n' tried instead on input line 136.
 
 [6
 
 ]
-<fig1_selfloop_prob.png, id=130, 505.89pt x 325.215pt>
+<fig1_selfloop_prob.png, id=131, 505.89pt x 325.215pt>
 File: fig1_selfloop_prob.png Graphic file (type png)
 <use fig1_selfloop_prob.png>
-Package pdftex.def Info: fig1_selfloop_prob.png  used on input line 166.
+Package pdftex.def Info: fig1_selfloop_prob.png  used on input line 164.
 (pdftex.def)             Requested size: 194.28362pt x 124.89801pt.
  [7
 
  <./fig1_selfloop_prob.png>]
-<fig2_mass_retention.png, id=138, 505.89pt x 325.215pt>
+<fig2_mass_retention.png, id=139, 505.89pt x 325.215pt>
 File: fig2_mass_retention.png Graphic file (type png)
 <use fig2_mass_retention.png>
-Package pdftex.def Info: fig2_mass_retention.png  used on input line 181.
-(pdftex.def)             Requested size: 302.2197pt x 194.2869pt.
-LaTeX Font Info:    Font shape `OT1/cmss/b/n' in size <10.95> not available
-(Font)              Font shape `OT1/cmss/bx/n' tried instead on input line 181.
-
-
-Overfull \vbox (57.03749pt too high) detected at line 181
- []
-
-[8
+Package pdftex.def Info: fig2_mass_retention.png  used on input line 178.
+(pdftex.def)             Requested size: 237.4607pt x 152.65257pt.
+ [8
 
  <./fig2_mass_retention.png>]
-<fig5_block_matrix.png, id=145, 433.62pt x 397.485pt>
+<fig5_block_matrix.png, id=147, 433.62pt x 397.485pt>
 File: fig5_block_matrix.png Graphic file (type png)
 <use fig5_block_matrix.png>
-Package pdftex.def Info: fig5_block_matrix.png  used on input line 210.
+Package pdftex.def Info: fig5_block_matrix.png  used on input line 207.
 (pdftex.def)             Requested size: 211.55708pt x 193.9263pt.
  [9
 
- <./fig5_block_matrix.png>] [10
+ <./fig5_block_matrix.png>]
+LaTeX Font Info:    Font shape `OT1/cmss/b/n' in size <14.4> not available
+(Font)              Font shape `OT1/cmss/bx/n' tried instead on input line 226.
+
+LaTeX Font Info:    Font shape `OT1/cmss/b/n' in size <7> not available
+(Font)              Font shape `OT1/cmss/bx/n' tried instead on input line 226.
+
+ [10
 
 ]
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 232.
+(hyperref)                removing `math shift' on input line 229.
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `subscript' on input line 232.
+(hyperref)                removing `subscript' on input line 229.
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 232.
+(hyperref)                removing `math shift' on input line 229.
 
 [11
 
@@ -1079,27 +1060,27 @@ Package hyperref Warning: Token not allowed in a PDF string (Unicode):
 ] [14
 
 ]
-<fig10_convergence.png, id=205, 505.89pt x 325.215pt>
+<fig10_convergence.png, id=206, 505.89pt x 325.215pt>
 File: fig10_convergence.png Graphic file (type png)
 <use fig10_convergence.png>
-Package pdftex.def Info: fig10_convergence.png  used on input line 359.
+Package pdftex.def Info: fig10_convergence.png  used on input line 356.
 (pdftex.def)             Requested size: 293.58298pt x 188.734pt.
  [15
 
  <./fig10_convergence.png>]
 File: fig11_sparsity_histogram.png Graphic file (type png)
 <use fig11_sparsity_histogram.png>
-Package pdftex.def Info: fig11_sparsity_histogram.png  used on input line 387.
+Package pdftex.def Info: fig11_sparsity_histogram.png  used on input line 384.
 (pdftex.def)             Requested size: 224.50888pt x 89.93727pt.
  [16
 
 ] [17
 
 ]
-<fig14_bias_variance_decomp.png, id=223, 566.5968pt x 349.7868pt>
+<fig14_bias_variance_decomp.png, id=224, 566.5968pt x 349.7868pt>
 File: fig14_bias_variance_decomp.png Graphic file (type png)
 <use fig14_bias_variance_decomp.png>
-Package pdftex.def Info: fig14_bias_variance_decomp.png  used on input line 443
+Package pdftex.def Info: fig14_bias_variance_decomp.png  used on input line 440
 .
 (pdftex.def)             Requested size: 237.4607pt x 146.59454pt.
  [18
@@ -1107,52 +1088,43 @@ Package pdftex.def Info: fig14_bias_variance_decomp.png  used on input line 443
  <./fig14_bias_variance_decomp.png>] [19
 
 ]
-<fig12_cv_mse_correlation.png, id=236, 566.5968pt x 349.7868pt>
+<fig12_cv_mse_correlation.png, id=237, 566.5968pt x 349.7868pt>
 File: fig12_cv_mse_correlation.png Graphic file (type png)
 <use fig12_cv_mse_correlation.png>
-Package pdftex.def Info: fig12_cv_mse_correlation.png  used on input line 469.
-(pdftex.def)             Requested size: 323.80824pt x 199.89827pt.
-
-Overfull \vbox (11.78835pt too high) detected at line 469
- []
-
-[20
+Package pdftex.def Info: fig12_cv_mse_correlation.png  used on input line 465.
+(pdftex.def)             Requested size: 302.2197pt x 186.571pt.
+ [20
 
  <./fig12_cv_mse_correlation.png>]
-<fig13_cv_downstream_variance.png, id=243, 566.5968pt x 349.7868pt>
+<fig13_cv_downstream_variance.png, id=244, 566.5968pt x 349.7868pt>
 File: fig13_cv_downstream_variance.png Graphic file (type png)
 <use fig13_cv_downstream_variance.png>
 Package pdftex.def Info: fig13_cv_downstream_variance.png  used on input line 4
-79.
-(pdftex.def)             Requested size: 323.80824pt x 199.89827pt.
-
-Overfull \vbox (11.78835pt too high) detected at line 479
- []
-
-[21
+74.
+(pdftex.def)             Requested size: 302.2197pt x 186.571pt.
+ [21
 
  <./fig13_cv_downstream_variance.png>]
-<fig6_smoothing_tradeoff.png, id=250, 718.3638pt x 292.9344pt>
+<fig6_smoothing_tradeoff.png, id=251, 718.3638pt x 292.9344pt>
 File: fig6_smoothing_tradeoff.png Graphic file (type png)
 <use fig6_smoothing_tradeoff.png>
-Package pdftex.def Info: fig6_smoothing_tradeoff.png  used on input line 485.
+Package pdftex.def Info: fig6_smoothing_tradeoff.png  used on input line 480.
 (pdftex.def)             Requested size: 354.0335pt x 144.3705pt.
  [22
 
  <./fig6_smoothing_tradeoff.png>]
-<fig16_verification.png, id=257, 855.6768pt x 370.0224pt>
+<fig16_verification.png, id=258, 855.6768pt x 370.0224pt>
 File: fig16_verification.png Graphic file (type png)
 <use fig16_verification.png>
-Package pdftex.def Info: fig16_verification.png  used on input line 496.
+Package pdftex.def Info: fig16_verification.png  used on input line 491.
 (pdftex.def)             Requested size: 354.0335pt x 153.09344pt.
-
-[23
+ [23
 
  <./fig16_verification.png>]
 <fig15_raw_vs_smoothed_mre.png, id=265, 853.7496pt x 349.7868pt>
 File: fig15_raw_vs_smoothed_mre.png Graphic file (type png)
 <use fig15_raw_vs_smoothed_mre.png>
-Package pdftex.def Info: fig15_raw_vs_smoothed_mre.png  used on input line 517.
+Package pdftex.def Info: fig15_raw_vs_smoothed_mre.png  used on input line 512.
 
 (pdftex.def)             Requested size: 345.39677pt x 141.51343pt.
  [24
@@ -1161,31 +1133,23 @@ Package pdftex.def Info: fig15_raw_vs_smoothed_mre.png  used on input line 517.
 <fig4_mre_vs_mu.png, id=271, 505.89pt x 325.215pt>
 File: fig4_mre_vs_mu.png Graphic file (type png)
 <use fig4_mre_vs_mu.png>
-Package pdftex.def Info: fig4_mre_vs_mu.png  used on input line 527.
-(pdftex.def)             Requested size: 293.58298pt x 188.734pt.
-
-Overfull \vbox (0.62407pt too high) detected at line 527
- []
-
-[25
+Package pdftex.def Info: fig4_mre_vs_mu.png  used on input line 522.
+(pdftex.def)             Requested size: 276.3161pt x 177.63316pt.
+ [25
 
  <./fig4_mre_vs_mu.png>]
 <fig3_mre_heatmap.png, id=279, 505.89pt x 361.35pt>
 File: fig3_mre_heatmap.png Graphic file (type png)
 <use fig3_mre_heatmap.png>
-Package pdftex.def Info: fig3_mre_heatmap.png  used on input line 536.
-(pdftex.def)             Requested size: 267.67937pt x 191.2003pt.
-
-Overfull \vbox (3.09038pt too high) detected at line 536
- []
-
-[26
+Package pdftex.def Info: fig3_mre_heatmap.png  used on input line 531.
+(pdftex.def)             Requested size: 250.41249pt x 178.86604pt.
+ [26
 
  <./fig3_mre_heatmap.png>]
 <fig8_damping_sensitivity.png, id=286, 783.4068pt x 332.9238pt>
 File: fig8_damping_sensitivity.png Graphic file (type png)
 <use fig8_damping_sensitivity.png>
-Package pdftex.def Info: fig8_damping_sensitivity.png  used on input line 546.
+Package pdftex.def Info: fig8_damping_sensitivity.png  used on input line 541.
 (pdftex.def)             Requested size: 293.58298pt x 124.76483pt.
  [27
 
@@ -1193,11 +1157,8 @@ Package pdftex.def Info: fig8_damping_sensitivity.png  used on input line 546.
 <fig9_before_after.png, id=293, 505.89pt x 325.215pt>
 File: fig9_before_after.png Graphic file (type png)
 <use fig9_before_after.png>
-Package pdftex.def Info: fig9_before_after.png  used on input line 556.
-(pdftex.def)             Requested size: 336.76004pt x 216.49353pt.
-
-Overfull \vbox (27.27946pt too high) detected at line 556
- []
+Package pdftex.def Info: fig9_before_after.png  used on input line 550.
+(pdftex.def)             Requested size: 293.58298pt x 188.734pt.
 
 [28
 
@@ -1226,11 +1187,11 @@ Package rerunfilecheck Info: File `slides.out' has not changed.
 (rerunfilecheck)             Checksum: 163363E1F8D8E1E808DE3BE57ABB28D4;1063.
  ) 
 Here is how much of TeX's memory you used:
- 25109 strings out of 476182
- 497990 string characters out of 5795595
+ 25093 strings out of 476182
+ 497711 string characters out of 5795595
  1936975 words of memory out of 5000000
- 46553 multiletter control sequences out of 15000+600000
- 579243 words of font info for 113 fonts, out of 8000000 for 9000
+ 46537 multiletter control sequences out of 15000+600000
+ 575433 words of font info for 99 fonts, out of 8000000 for 9000
  14 hyphenation exceptions out of 8191
  101i,17n,107p,398b,866s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb></us
@@ -1248,7 +1209,7 @@ cmssi17.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmssi
 8.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb>
 </usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></usr/s
 hare/texlive/texmf-dist/fonts/type1/public/amsfonts/symbols/msbm10.pfb>
-Output written on slides.pdf (31 pages, 1403150 bytes).
+Output written on slides.pdf (31 pages, 1403086 bytes).
 PDF statistics:
  412 PDF objects out of 1000 (max. 8388607)
  272 compressed objects within 3 object streams
