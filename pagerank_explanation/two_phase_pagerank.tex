@@ -323,6 +323,206 @@ multiplication. This means smoothing \emph{redistributes} mass but never creates
 destroys it, ensuring physical consistency.
 
 %-------------------------------------------------------------
+\subsection{Complete Construction of the Teleportation Vector $E_N$}
+\label{sec:teleportation_construction}
+%-------------------------------------------------------------
+
+This subsection consolidates the steps above into a single, self-contained
+description of how the \textbf{ground-truth GPS data} is transformed into the
+teleportation probability vector used by PageRank. It is important to emphasise
+that the ground truth \emph{only} enters the model through this vector---it plays
+no role whatsoever in the transition matrix, which is built entirely from the
+static road-network topology, road lengths, and speed limits.
+
+\subsubsection{Four-Step Pipeline}
+
+\begin{enumerate}[label=\textbf{Step~\arabic*.}]
+  \item \textbf{Extract raw counts from GPS data.}
+    For a given 15-minute window, parse all GPS trajectories and count how many
+    traced vehicles traversed each of the $N = 99{,}716$ road links. The result is
+    a raw count vector $\mathbf{c} \in \mathbb{Z}_{\geq 0}^N$, where $c_i$ is the
+    number of observed vehicles on link~$i$. Most entries are $c_i = 0$.
+
+  \item \textbf{Apply Laplace pseudo-count.}
+    Add a small constant $\alpha = 0.1$ to every entry:
+    \[
+      \tilde{c}_i = c_i + 0.1, \qquad i = 1, \ldots, N.
+    \]
+    This ensures that no link has zero probability, preventing MRE singularities
+    and Markov chain absorbing states.
+
+  \item \textbf{Apply graph-diffusion smoothing ($\gamma = 0.26$).}
+    Propagate evidence along the road network:
+    \[
+      c_{\text{smooth},i}
+      = 0.74\;\tilde{c}_i
+      + 0.26\;\frac{1}{\deg^{+}(i)}\sum_{j \in \text{out}(i)} \tilde{c}_j,
+    \]
+    where the sum runs over the out-neighbours of link~$i$ in the directed road
+    graph. Each link retains 74\% of its own value and receives 26\% from the
+    average of its neighbours.
+
+  \item \textbf{$L^1$-normalise to obtain $E_N$.}
+    Divide by the total mass to convert counts into a probability distribution:
+    \[
+      E_N[i] = \frac{c_{\text{smooth},i}}{\sum_{j=1}^N c_{\text{smooth},j}},
+      \qquad \sum_{i=1}^N E_N[i] = 1.
+    \]
+    Each entry $E_N[i]$ now represents the \emph{probability} that a newly injected
+    (``teleported'') vehicle will appear on link~$i$.
+\end{enumerate}
+
+\subsubsection{Worked Numerical Example}
+
+To make the construction concrete, consider a toy network with $N = 5$ links and
+the following directed adjacency structure:
+
+\begin{center}
+\begin{tikzpicture}[
+  node distance=2cm, >=stealth, thick,
+  every node/.style={circle, draw, minimum size=8mm, font=\small}
+]
+  \node (1) {1};
+  \node (2) [right of=1] {2};
+  \node (3) [right of=2] {3};
+  \node (4) [below of=2] {4};
+  \node (5) [right of=4] {5};
+  \draw[->] (1) -- (2);
+  \draw[->] (2) -- (3);
+  \draw[->] (2) -- (4);
+  \draw[->] (3) -- (5);
+  \draw[->] (4) -- (5);
+\end{tikzpicture}
+\end{center}
+
+\noindent
+Suppose during a 15-minute window, the raw GPS counts are:
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Worked example: constructing $E_N$ from raw GPS data.}
+  \label{tab:teleport_example}
+  \begin{tabular}{@{}c c c c c c@{}}
+    \toprule
+    Link $i$ & 1 & 2 & 3 & 4 & 5\\
+    \midrule
+    \textbf{Step 1:} Raw count $c_i$
+      & 0 & 5 & 0 & 3 & 0\\[4pt]
+    \textbf{Step 2:} After Laplace ($\tilde{c}_i = c_i + 0.1$)
+      & 0.10 & 5.10 & 0.10 & 3.10 & 0.10\\[4pt]
+    \textbf{Step 3a:} Neighbour average
+      $\frac{1}{|\text{out}(i)|}\sum_{j \in \text{out}(i)} \tilde{c}_j$
+      & 5.10 & 1.60 & 0.10 & 0.10 & ---\\[4pt]
+    \textbf{Step 3b:} Smoothed
+      $c_{\text{smooth},i} = 0.74\,\tilde{c}_i + 0.26 \cdot \text{avg}$
+      & 1.400 & 4.190 & 0.100 & 2.320 & 0.100\\[4pt]
+    \textbf{Step 4:} $E_N[i] = c_{\text{smooth},i}/\text{total}$
+      & 0.1724 & 0.5160 & 0.0123 & 0.2858 & 0.0123\\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\noindent
+\textbf{Reading the example:}
+\begin{itemize}
+  \item Link~1 had \emph{zero} observed vehicles, yet it receives
+    $E_N[1] = 17.2\%$ of the teleportation probability---because its only
+    out-neighbour (link~2) is heavily trafficked ($c_2 = 5$), and smoothing
+    propagates evidence from link~2 back to link~1.
+  \item Link~5 is a dead-end (no out-neighbours), so its smoothed value remains
+    at the Laplace floor ($\alpha = 0.1$). It gets the minimal
+    $E_N[5] = 1.2\%$.
+  \item Link~2 retains the lion's share ($51.6\%$) because it has the highest
+    raw count, and smoothing only reduces it slightly.
+\end{itemize}
+
+\begin{insight}
+  This example illustrates the fundamental roles:
+  \begin{enumerate}[label=(\roman*)]
+    \item \textbf{Ground truth} determines \emph{where} traffic is injected
+      (links~2 and~4 dominate because they were observed).
+    \item \textbf{Topology} determines \emph{how} evidence propagates (link~1
+      gains probability despite having zero observations, because it feeds
+      into the busy link~2).
+    \item The two roles are combined \emph{only} in the teleportation vector;
+      the transition matrix is built entirely from the physical network.
+  \end{enumerate}
+\end{insight}
+
+\subsubsection{Separation of Ground Truth and Topology}
+
+It is critical to understand the clean architectural separation in the Two-Phase
+PageRank model:
+
+\begin{table}[H]
+  \centering
+  \caption{Role of ground truth vs.\ network topology in the model.}
+  \label{tab:roles}
+  \begin{tabular}{@{}lll@{}}
+    \toprule
+    Component & Data source & Role in PageRank\\
+    \midrule
+    Transition matrix $M_{2N}$ & Road topology, lengths, speeds
+      & Governs where vehicles \emph{move}\\
+    Teleportation vector $E_{2N}$ & Ground truth GPS counts
+      & Governs where vehicles are \emph{born}\\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The PageRank power iteration combines both components:
+\begin{equation}
+  \mathbf{v}^{(k+1)} = d\,M_{2N}^{\top}\,\mathbf{v}^{(k)}
+  + (1-d)\,E_{2N}.
+  \label{eq:power_roles}
+\end{equation}
+At every iteration, a fraction $d = 0.80$ of probability mass follows the
+\textbf{topology-driven} transition matrix (vehicles move along roads), while the
+remaining $1 - d = 0.20$ is \textbf{re-injected from ground truth} via the
+teleportation vector (new vehicles appear on roads proportional to observed
+traffic). This blending is what makes the model both \emph{physically realistic}
+(traffic follows roads) and \emph{empirically grounded} (predictions are anchored
+to real observations).
+
+\subsubsection{Why Probability-Based Injection Is Appropriate}
+
+A natural question is: given that the ground truth counts are sparse and noisy,
+is it appropriate to convert them into probabilities and inject them directly
+into the Markov chain?
+
+Three arguments support this design:
+
+\begin{enumerate}[label=\textbf{A\arabic*.}]
+  \item \textbf{Physical consistency.} The PageRank stationary distribution
+    $\mathbf{v}$ is itself a probability distribution ($\sum_i v_i = 1$). To
+    add a source term that is consistent with the output, the teleportation
+    vector must also be a probability distribution. Using raw counts would
+    introduce dimensional inconsistency.
+
+  \item \textbf{Scale invariance.} On a quiet Sunday night, the total GPS count
+    might be 500; during Monday rush hour it might be 50{,}000. By normalising
+    to probabilities, the algorithm responds to the \emph{relative spatial
+    pattern} of traffic (which links are busier \emph{than others}), not the
+    absolute volume. The absolute scale is irrelevant to predicting traffic
+    \emph{distribution}.
+
+  \item \textbf{Smoothing as denoising.} The Laplace prior and graph-diffusion
+    smoothing (Section~\ref{sec:laplace}--\ref{sec:diffusion}) address the
+    concern that raw probabilities would be noisy. After smoothing, the
+    probability vector $E_N$ is a denoised, topology-aware estimate of the
+    true traffic distribution, suitable for direct injection.
+\end{enumerate}
+
+\begin{result}
+  The 490-timeframe experiment of Section~\ref{sec:downstream_impact} provides
+  strong empirical evidence: the smoothed probability-based injection achieves
+  MRE = 0.19, meaning the PageRank output matches the ground truth with an
+  average relative error of only 19\%. This confirms that the injection mechanism
+  is not just theoretically sound but also practically effective.
+\end{result}
+
+%-------------------------------------------------------------
 \subsection{Theoretical Justification: The Bias-Variance Tradeoff}
 \label{sec:bv_theory}
 %-------------------------------------------------------------
