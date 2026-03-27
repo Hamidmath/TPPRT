@@ -43,22 +43,23 @@
 \end{frame}
 
 %=================================================================
-\section{Problem \& Motivation}
+\section{Problem \& Approach}
 %=================================================================
 
-\begin{frame}{The Problem}
+\begin{frame}{The Traffic Prediction Problem}
   \begin{columns}[T]
     \begin{column}{0.55\textwidth}
       \begin{itemize}
-        \item Salt Lake City road network: \highlight{99,716 links}
-        \item GPS data covers only a \bad{tiny fraction} per 15-min window
-        \item Goal: predict \highlight{full traffic distribution}
-              from a sparse sample
+        \item Salt Lake City: \highlight{99,716 directed road links}
+        \item GPS traces cover only a \bad{tiny fraction}
+              of the network per 15-min window
+        \item Goal: predict the \highlight{full traffic distribution}
+              across every road
       \end{itemize}
-      \bigskip
-      \begin{block}{Key Idea}
-        Model traffic as a \textbf{random walk} on the road graph
-        $\Rightarrow$ PageRank
+      \medskip
+      \begin{block}{Our Approach}
+        Model traffic as a \textbf{two-phase random walk} on the
+        road graph, incorporating physical travel time
       \end{block}
     \end{column}
     \begin{column}{0.42\textwidth}
@@ -73,63 +74,79 @@
   \includegraphics[width=0.92\textwidth]{fig7_pipeline.png}
 \end{frame}
 
+%─────────────────────────────────────────
+\begin{frame}{Two Components of the Model}
+  \centering
+  \begin{tikzpicture}
+    \node[draw, rounded corners, fill=accent!10, minimum width=11cm,
+          minimum height=2.6cm, align=center, font=\large] {
+      \textbf{Power Iteration:}\quad
+      $\displaystyle\mathbf{v}^{(k+1)}
+      = \underbrace{d \cdot M_{2N}^\top \cdot \mathbf{v}^{(k)}}_{\text{Transition Matrix (topology)}}
+      + \underbrace{(1-d) \cdot E_{2N}}_{\text{Teleportation Vector (ground truth)}}$
+    };
+  \end{tikzpicture}
+
+  \bigskip
+  \begin{tabular}{lll}
+    \toprule
+    \textbf{Component} & \textbf{Built from} & \textbf{Role}\\
+    \midrule
+    Transition matrix $M_{2N}$ & Road topology, lengths, speeds
+      & Where vehicles \textbf{move}\\
+    Teleportation vector $E_{2N}$ & Ground-truth GPS counts
+      & Where vehicles are \textbf{born}\\
+    \bottomrule
+  \end{tabular}
+\end{frame}
+
 %=================================================================
 \section{Building the Transition Matrix $M_{2N}$}
 %=================================================================
 
 %─────────────────────────────────────────
-\begin{frame}{Step 1: Base Adjacency}
-  \begin{columns}[T]
-    \begin{column}{0.55\textwidth}
-      \begin{itemize}
-        \item Directed graph: link $i \to j$ if road $i$ connects to road $j$
-        \item Row-stochastic normalisation:
-      \end{itemize}
-      \[
-        P_{ij} = \frac{A_{ij}}{\sum_k A_{ik}}
-      \]
-      \begin{itemize}
-        \item This is \textbf{purely topological} --- no GPS data involved
-      \end{itemize}
-    \end{column}
-    \begin{column}{0.42\textwidth}
-      \centering
-      \begin{tikzpicture}[
-        node distance=1.6cm, >=stealth, thick,
-        every node/.style={circle, draw, minimum size=7mm, font=\small}
-      ]
-        \node (1) {1};
-        \node (2) [right of=1] {2};
-        \node (3) [right of=2] {3};
-        \node (4) [below of=2] {4};
-        \draw[->] (1) -- (2);
-        \draw[->] (2) -- (3);
-        \draw[->] (2) -- (4);
-        \draw[->] (3) -- (4);
-      \end{tikzpicture}
+\begin{frame}{The Two Phases of Driving}
+  Every road link $i$ has \highlight{two states}:
 
-      \bigskip
-      \small
-      $P = \begin{pmatrix}
-        0 & 1 & 0 & 0\\
-        0 & 0 & \frac{1}{2} & \frac{1}{2}\\
-        0 & 0 & 0 & 1\\
-        0 & 0 & 0 & 0
-      \end{pmatrix}$
+  \bigskip
+  \begin{columns}[c]
+    \begin{column}{0.45\textwidth}
+      \centering
+      \textbf{\large Up Phase}\\[6pt]
+      Vehicle is \highlight{actively traversing} link $i$\\[4pt]
+      Stays on link proportional to\\
+      its physical travel time\\[4pt]
+      \good{Self-loop traps mass}
+    \end{column}
+    \begin{column}{0.08\textwidth}
+      \centering
+      {\Huge$\xrightarrow{\;\beta\;}$}
+    \end{column}
+    \begin{column}{0.45\textwidth}
+      \centering
+      \textbf{\large Down Phase}\\[6pt]
+      Vehicle is \highlight{locally dispersing}\\[4pt]
+      Moves to adjacent links\\
+      in the local neighbourhood\\[4pt]
+      Represents turning, parking, etc.
     \end{column}
   \end{columns}
+
+  \bigskip
+  \centering
+  $\beta = 0.90$: probability of dropping from Up to Down per step
 \end{frame}
 
 %─────────────────────────────────────────
-\begin{frame}{Step 2: Travel-Time Self-Loops}
+\begin{frame}{Up Phase: Travel-Time Self-Loops}
   \begin{columns}[T]
     \begin{column}{0.52\textwidth}
-      \textbf{Problem:} Standard PageRank treats every
-      road transition as instantaneous.
+      A vehicle on link $i$ has traversal time
+      $t_i = \ell_i / s_i$ seconds.
 
       \medskip
-      \textbf{Fix:} Add a \highlight{self-loop} proportional to
-      traversal time:
+      We add a \highlight{self-loop} so the vehicle ``dwells''
+      on the link proportionally:
       \[
         \boxed{w_i = \mu \cdot \frac{\ell_i}{s_i}}
       \]
@@ -138,7 +155,9 @@
         \item $\ell_i$ = road length, $s_i$ = speed limit
         \item $\mu = 20$ = dwell-time scale
       \end{itemize}
-      \good{Longer roads trap more mass}
+
+      \medskip
+      \good{Longer/slower roads retain more mass}
     \end{column}
     \begin{column}{0.45\textwidth}
       \includegraphics[width=\textwidth]{fig1_selfloop_prob.png}
@@ -147,67 +166,66 @@
 \end{frame}
 
 %─────────────────────────────────────────
-\begin{frame}{Self-Loop: Before \& After}
-  \centering
-  \includegraphics[width=0.78\textwidth]{fig9_before_after.png}
+\begin{frame}{Self-Loop Probability}
+  After adding the self-loop, the row-stochastic transition for link $i$ becomes:
+  \[
+    P_{\text{self}}(i, i) = \frac{w_i}{w_i + \deg^+(i)},
+    \qquad
+    P_{\text{self}}(i, j) = \frac{A_{ij}}{w_i + \deg^+(i)}
+  \]
 
-  \medskip
-  \small Without self-loops: uniform diffusion.\quad
-  With self-loops: \good{concentrates on arterials}.
+  \centering
+  \includegraphics[width=0.70\textwidth]{fig2_mass_retention.png}
+
+  \small Links with high $w_i$ retain most of their probability mass
 \end{frame}
 
 %─────────────────────────────────────────
-\begin{frame}{Step 3: Two-Phase Block Matrix}
+\begin{frame}{The $2N \times 2N$ Block Matrix}
   \begin{columns}[T]
-    \begin{column}{0.50\textwidth}
-      Split each link into two states:
-      \begin{itemize}
-        \item \highlight{Up} = actively driving through
-        \item \highlight{Down} = locally dispersing
-      \end{itemize}
-
-      \bigskip
-      Block structure ($2N \times 2N$):
+    \begin{column}{0.48\textwidth}
       \[
-        M_{2N} = \begin{pmatrix}
-          (1-\beta)\,P_{\text{self}} & \beta\,I\\
+        \boxed{M_{2N} = \begin{pmatrix}
+          (1{-}\beta)\,P_{\text{self}} & \beta\,I\\
           0 & P_{\text{adj}}
-        \end{pmatrix}
+        \end{pmatrix}}
       \]
 
-      \begin{itemize}
-        \item $\beta = 0.90$: drop-rate to Down phase
-        \item $P_{\text{self}}$: includes self-loops
-        \item $P_{\text{adj}}$: local adjacency
+      \medskip
+      \begin{itemize}\itemsep4pt
+        \item \highlight{Top-left}: Up$\to$Up\\
+              (stay driving, with self-loops)
+        \item \highlight{Top-right}: Up$\to$Down\\
+              (drop to local dispersal)
+        \item \highlight{Bottom-right}: Down$\to$Down\\
+              (move to adjacent links)
+        \item Bottom-left: $0$\\
+              (no return from Down to Up)
       \end{itemize}
     \end{column}
-    \begin{column}{0.47\textwidth}
+    \begin{column}{0.49\textwidth}
       \includegraphics[width=\textwidth]{fig5_block_matrix.png}
     \end{column}
   \end{columns}
 \end{frame}
 
 %─────────────────────────────────────────
-\begin{frame}{Key Point: Transition Matrix Uses \underline{No} Ground Truth}
+\begin{frame}{Key Fact: $M_{2N}$ Uses \underline{No} Ground Truth}
   \centering
   \begin{tikzpicture}
     \node[draw, rounded corners, fill=accent!10, minimum width=10cm,
-          minimum height=2.2cm, align=center, font=\large] {
-      The transition matrix $M_{2N}$ is built \textbf{entirely}\\
-      from \textbf{road topology, lengths, and speed limits}.\\[6pt]
-      \textbf{No GPS data.  No traffic counts.  No ground truth.}
+          minimum height=2cm, align=center, font=\large] {
+      $M_{2N}$ is built \textbf{entirely} from the\\
+      \textbf{road network}: topology, lengths, and speed limits.\\[6pt]
+      \textbf{No GPS data. No traffic counts.}
     };
   \end{tikzpicture}
 
   \bigskip
-  \begin{tabular}{lll}
-    \toprule
-    \textbf{Component} & \textbf{Data source} & \textbf{Role}\\
-    \midrule
-    Transition $M_{2N}$ & Road network (static) & Where vehicles \textbf{move}\\
-    Teleportation $E_{2N}$ & GPS data (dynamic) & Where vehicles are \textbf{born}\\
-    \bottomrule
-  \end{tabular}
+  The transition matrix defines the ``physics''---\\
+  the rules of how vehicles move through the network.\\[6pt]
+  It is \highlight{built once} for a city and \highlight{reused}
+  for every 15-minute prediction window.
 \end{frame}
 
 %=================================================================
@@ -234,7 +252,7 @@
       \]
   \end{enumerate}
 
-  \bigskip
+  \medskip
   \begin{block}{Result}
     $E_N[i]$ = probability that a new vehicle appears on link $i$
   \end{block}
@@ -259,7 +277,7 @@
     \draw[->] (4) -- (5);
   \end{tikzpicture}
 
-  \bigskip
+  \medskip
   \small
   \begin{tabular}{lccccc}
     \toprule
@@ -290,14 +308,15 @@
   \bigskip
   \textbf{Physical meaning:}
   \begin{itemize}
-    \item New vehicles ``start'' actively driving on a road
+    \item New vehicles are ``born'' actively driving on a road
     \item They naturally transition to the Down phase over time
-    \item No vehicles are born directly into local dispersal mode
+    \item The ground truth determines \emph{where} they appear;\\
+          the transition matrix determines \emph{how} they move
   \end{itemize}
 \end{frame}
 
 %=================================================================
-\section{The PageRank Power Iteration}
+\section{The Power Iteration}
 %=================================================================
 
 %─────────────────────────────────────────
@@ -305,30 +324,30 @@
   \begin{block}{\large The Power Iteration}
     \[
       \boxed{\mathbf{v}^{(k+1)}
-      = \underbrace{d \cdot M_{2N}^\top \cdot \mathbf{v}^{(k)}}_{\text{topology (80\%)}}
-      + \underbrace{(1-d) \cdot E_{2N}}_{\text{ground truth (20\%)}}}
+      = \underbrace{d \cdot M_{2N}^\top \cdot \mathbf{v}^{(k)}}_{\text{topology-driven flow (80\%)}}
+      + \underbrace{(1-d) \cdot E_{2N}}_{\text{ground-truth injection (20\%)}}}
     \]
   \end{block}
 
-  \bigskip
+  \medskip
   \begin{columns}[T]
     \begin{column}{0.48\textwidth}
       \centering\highlight{$d = 0.80$}\\[4pt]
       80\% of mass follows the\\
       \textbf{transition matrix}\\
-      (roads, speeds, physics)
+      (roads, travel times, phases)
     \end{column}
     \begin{column}{0.48\textwidth}
       \centering\highlight{$1 - d = 0.20$}\\[4pt]
       20\% of mass is re-injected\\
-      from \textbf{ground truth GPS}\\
+      from \textbf{ground-truth GPS}\\
       (observed traffic pattern)
     \end{column}
   \end{columns}
 
-  \bigskip
+  \medskip
   \centering
-  Iterate until $\|\mathbf{v}^{(k+1)} - \mathbf{v}^{(k)}\|_1 < 10^{-6}$
+  Converges when $\|\mathbf{v}^{(k+1)} - \mathbf{v}^{(k)}\|_1 < 10^{-6}$
 \end{frame}
 
 %─────────────────────────────────────────
@@ -336,7 +355,7 @@
   \centering
   \includegraphics[width=0.68\textwidth]{fig10_convergence.png}
 
-  \small Typically converges in $\sim$40--60 iterations.
+  \small Typically converges in $\sim$40--60 iterations
 \end{frame}
 
 %=================================================================
@@ -377,7 +396,7 @@
       \cdot P_{\text{adj}}\,\tilde{\mathbf{c}}
   \]
 
-  \bigskip
+  \medskip
   \begin{columns}[T]
     \begin{column}{0.48\textwidth}
       \centering
@@ -450,7 +469,7 @@
 \end{frame}
 
 %─────────────────────────────────────────
-\begin{frame}{CV Results: Downstream PageRank}
+\begin{frame}{CV Results: Downstream PageRank MSE}
   \centering
   \includegraphics[width=0.75\textwidth]{fig13_cv_downstream_variance.png}
 
@@ -470,7 +489,7 @@
   \centering
   \includegraphics[width=0.82\textwidth]{fig16_verification.png}
 
-  \bigskip
+  \medskip
   \small Broad plateau at $\gamma \in [0.22, 0.30]$;
   $\gamma = 0.26$ is the \good{centre of the plateau}.\\
   MSE varies $<0.04\%$ within this band.
@@ -513,7 +532,7 @@
   \includegraphics[width=0.62\textwidth]{fig3_mre_heatmap.png}
 
   \medskip
-  Best: $\mu = 20$, $\beta = 0.90$, $d = 0.80$
+  Best combination: $\mu = 20$, $\beta = 0.90$, $d = 0.80$
 \end{frame}
 
 %─────────────────────────────────────────
@@ -524,6 +543,16 @@
   \medskip
   $d = 0.80$ balances topology-driven flow
   with ground-truth injection
+\end{frame}
+
+%─────────────────────────────────────────
+\begin{frame}{Before \& After Self-Loops}
+  \centering
+  \includegraphics[width=0.78\textwidth]{fig9_before_after.png}
+
+  \medskip
+  \small Self-loops \good{concentrate mass on major arterials}
+  instead of spreading it uniformly
 \end{frame}
 
 %=================================================================
@@ -555,16 +584,16 @@
 \begin{frame}{Key Takeaways}
   \begin{enumerate}
     \item \highlight{Transition matrix} $M_{2N}$ uses \textbf{only topology}\\
-          (road graph $+$ lengths $+$ speeds)
+          (road graph $+$ lengths $+$ speeds $\to$ two-phase block structure)
     \bigskip
     \item \highlight{Teleportation vector} $E_{2N}$ uses \textbf{only ground truth}\\
           (GPS counts $\to$ Laplace $\to$ smoothing $\to$ normalise)
     \bigskip
-    \item \highlight{Smoothing is justified} by cross-validation:\\
-          $\gamma^* = 0.26$ minimises MSE (interior minimum, not boundary)
+    \item \highlight{Smoothing justified} by cross-validation:\\
+          $\gamma^* = 0.26$ minimises MSE (interior minimum, U-shaped curve)
     \bigskip
-    \item \highlight{Result}: MRE improves from 7,275 $\to$ 0.19\\
-          ($37{,}800\times$ improvement with smoothing alone)
+    \item \highlight{Model achieves} MRE = \good{0.19}\\
+          ($37{,}800\times$ improvement from smoothing alone)
   \end{enumerate}
 \end{frame}
 
