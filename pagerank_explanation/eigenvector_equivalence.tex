@@ -135,6 +135,138 @@ of~$j$.  This means that from \emph{every} state $j$, there is a
 probability $(1-d)\cdot E_{2N}[i]$ of teleporting to state~$i$.
 \end{remark}
 
+\subsection{Block-by-Block Expansion}
+
+A natural question arises: \emph{can we simply place $\bm{E}_{2N}$ inside the
+original matrix $M_{2N}$ to form a single matrix?}  The answer requires
+careful expansion.  The teleportation does \textbf{not} simply replace one
+block---it adds a rank-1 correction that spreads across the entire top half
+of the matrix.
+
+\medskip
+\noindent\textbf{Step 1: Expand the outer product.}
+Recall that $\bm{E}_{2N} = (\bm{E}_N,\, \bm{0}_N)^T$.  The rank-1 matrix
+$\bm{E}_{2N}\bm{1}^T$ therefore has the block structure:
+\begin{equation}\label{eq:outerblock}
+\bm{E}_{2N}\,\bm{1}^T
+= \begin{pmatrix} \bm{E}_N \\ \bm{0}_N \end{pmatrix}
+  \begin{pmatrix} \bm{1}_N^T & \bm{1}_N^T \end{pmatrix}
+= \begin{pmatrix}
+    \bm{E}_N\,\bm{1}_N^T & \bm{E}_N\,\bm{1}_N^T \\[4pt]
+    \bm{0}_{N\times N}    & \bm{0}_{N\times N}
+  \end{pmatrix}
+\end{equation}
+
+Here $\bm{E}_N\,\bm{1}_N^T$ is an $N \times N$ matrix where \emph{every column
+is identical}: column $j$ equals $\bm{E}_N$ for all $j = 1, \dots, N$.
+
+\begin{remark}
+Because $\bm{E}_{2N}$ has zeros in its bottom $N$ entries, the rank-1
+correction only affects the \textbf{top two blocks} of the Google Matrix.  The
+bottom two blocks remain unchanged.
+\end{remark}
+
+\medskip
+\noindent\textbf{Step 2: Expand $M_{2N}^T$.}
+Transposing the original block matrix~\eqref{eq:M2N}:
+\begin{equation}\label{eq:M2Ntranspose}
+M_{2N}^T =
+\begin{pmatrix}
+(1-\beta)\,P_{\text{up}}^T & \bm{0}_{N\times N} \\[4pt]
+\beta\,I_N                 & P_{\text{down}}^T
+\end{pmatrix}
+\end{equation}
+
+Note how the blocks move: $\beta I_N$ shifts from top-right to bottom-left,
+and the zero block shifts from bottom-left to top-right.
+
+\medskip
+\noindent\textbf{Step 3: Combine into the Google Matrix.}
+Substituting~\eqref{eq:M2Ntranspose} and~\eqref{eq:outerblock} into the
+Google Matrix definition~\eqref{eq:google}:
+
+\begin{equation}\label{eq:googleblocks}
+\boxed{
+\widetilde{M} =
+\begin{pmatrix}
+d(1-\beta)\,P_{\text{up}}^T + {\color{accent}(1-d)\,\bm{E}_N\bm{1}_N^T}
+  & {\color{accent}(1-d)\,\bm{E}_N\bm{1}_N^T} \\[6pt]
+d\beta\, I_N
+  & d\,P_{\text{down}}^T
+\end{pmatrix}
+}
+\end{equation}
+
+The terms in {\color{accent}red} are the contributions from the teleportation
+vector.  Notice that:
+\begin{itemize}
+  \item The teleportation is \textbf{added to} the top-left block (not
+        replacing $P_{\text{up}}^T$).
+  \item The top-right block, which was $\bm{0}$ in $M_{2N}^T$, is now
+        \textbf{entirely} the teleportation matrix
+        $(1-d)\,\bm{E}_N\bm{1}_N^T$.
+  \item The bottom-left block ($d\beta I_N$) is \textbf{unchanged}---the
+        phase-switch mechanism is preserved.
+  \item The bottom-right block ($d P_{\text{down}}^T$) is
+        \textbf{unchanged}---the downstream dynamics are preserved.
+\end{itemize}
+
+\medskip
+\noindent\textbf{Physical interpretation of each block:}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{|c|c|c|}
+\hline
+\textbf{Block} & \textbf{From $\to$ To} & \textbf{Meaning} \\
+\hline
+Top-Left & Up $\to$ Up &
+\begin{minipage}{6.5cm}\small
+  Vehicle follows upstream neighbors \emph{or} teleports
+  back to a high-traffic upstream link.
+\end{minipage} \\
+\hline
+Top-Right & Down $\to$ Up &
+\begin{minipage}{6.5cm}\small
+  Vehicle in the downstream phase teleports directly
+  to a high-traffic upstream link (with probability $1-d$).
+\end{minipage} \\
+\hline
+Bottom-Left & Up $\to$ Down &
+\begin{minipage}{6.5cm}\small
+  Vehicle switches from upstream to downstream phase
+  (probability $d\beta$). No teleportation here.
+\end{minipage} \\
+\hline
+Bottom-Right & Down $\to$ Down &
+\begin{minipage}{6.5cm}\small
+  Vehicle follows downstream neighbors.
+  No teleportation here.
+\end{minipage} \\
+\hline
+\end{tabular}
+\end{center}
+
+\medskip
+\noindent\textbf{Sparsity consequences.}
+The original $M_{2N}$ is highly sparse ($\sim$200K nonzero entries out of
+$4N^2 \approx 4 \times 10^{10}$ possible entries).  The Google Matrix
+$\widetilde{M}$ is \textbf{not sparse}: the top-left and top-right blocks
+each contain $N^2 \approx 10^{10}$ nonzero entries (because
+$\bm{E}_N\bm{1}_N^T$ is dense).
+
+\begin{tcolorbox}[colback=red!5,colframe=accent,title=Why We Cannot Store $\widetilde{M}$]
+For $N = 99{,}716$ links:
+\begin{itemize}
+  \item Top-left block: $N^2 = 9.94 \times 10^9$ entries $\times$ 8 bytes $\approx$ \textbf{74 GB}
+  \item Top-right block: $N^2 = 9.94 \times 10^9$ entries $\times$ 8 bytes $\approx$ \textbf{74 GB}
+  \item Total: $\approx$ \textbf{148 GB} of dense storage
+\end{itemize}
+This is why we use power iteration: it computes the same eigenvector by
+keeping $M_{2N}$ sparse and adding $\bm{E}_{2N}$ as a cheap $O(2N)$ vector
+operation at each step.
+\end{tcolorbox}
+
 \subsection{Derivation of Equivalence}
 
 \begin{theorem}[{Eigenvector Equivalence}]\label{thm:equiv}
