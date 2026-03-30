@@ -27,84 +27,64 @@ Evaluated on 49 random timeframes from September 2018 (seed=42).
 ```
 TwoPhase_PageRank_Project/
 │
-├── config.py                       # Centralized paths and default parameters
+├── config.py                        # Centralized paths and default parameters
 │
-├── core/                           # Core algorithm (importable package)
-│   ├── __init__.py                 #   Re-exports all public functions
-│   ├── pagerank.py                 #   Two-Phase PageRank implementation
-│   └── friction.py                 #   Alternative friction-based model
+├── core/                            # Core algorithm (importable package)
+│   ├── __init__.py                  #   Re-exports all public functions
+│   └── pagerank.py                  #   Two-Phase PageRank implementation
 │
 ├── scripts/
-│   ├── pipeline/                   # Data processing pipeline
-│   │   ├── compress_routes.py      #   1. Raw GPS CSV -> Parquet
-│   │   ├── match_routes.py         #   2. Map-match GPS to road network
-│   │   ├── analyze_routes.py       #   3. Route statistics & histograms
-│   │   ├── analyze_popularity.py   #   4. Bin traversals into 15-min windows
-│   │   ├── generate_smoothed.py    #   5. Graph-diffusion smoothing (--gamma)
-│   │   └── create_population.py    #   Zip code population data
+│   ├── pipeline/                    # Data processing pipeline
+│   │   ├── compress_routes.py       #   Step 1: Raw GPS CSV -> Parquet
+│   │   ├── match_routes.py          #   Step 2: Map-match GPS to road network
+│   │   ├── analyze_popularity.py    #   Step 3: Bin traversals into 15-min windows
+│   │   ├── generate_smoothed.py     #   Step 4: Graph-diffusion smoothing (--gamma)
+│   │   └── analyze_routes.py        #   Data statistics & diagnostics
 │   │
-│   ├── tuning/                     # Parameter search experiments
-│   │   ├── tune_mu.py              #   Grid search: mu x damping x beta
-│   │   ├── tune_tau.py             #   Grid search: tau x damping
-│   │   ├── tune_tau_fine.py        #   Fine-grained tau search
-│   │   ├── tune_strategies.py      #   Multi-strategy comparison (A-F)
-│   │   ├── tune_combos.py          #   Combination strategies (G-J)
-│   │   ├── tune_final.py           #   Final beta x boost fine-tuning
-│   │   ├── tune_top_100.py         #   Alpha_s/alpha_l for top-100
-│   │   └── friction_tuning.py      #   Friction self-loop experiment
+│   ├── tuning/                      # Parameter optimization
+│   │   └── tune_params.py           #   Grid search: mu x damping x beta
 │   │
-│   ├── evaluation/                 # Evaluation scripts
-│   │   ├── evaluate_timeframes.py  #   49-timeframe evaluation
-│   │   ├── evaluate_gamma_026.py   #   Evaluate with optimal smoothing
-│   │   ├── run_49_overall_mre.py   #   Overall MRE baseline
-│   │   └── run_baseline_extreme.py #   Extreme parameter baseline
+│   ├── evaluation/                  # Model evaluation
+│   │   └── evaluate.py              #   Comprehensive multi-metric evaluation
 │   │
-│   ├── comparison/                 # Comparison scripts
-│   │   ├── compare_baselines.py    #   Baseline vs. friction model
-│   │   ├── compare_top_100.py      #   Detailed top-100 link analysis
-│   │   ├── compare_smoothing_datasets.py  # Raw vs. smoothed datasets
-│   │   ├── compare_predictive_weeks.py    # Cross-week prediction
-│   │   └── compare_raw_vs_smoothed.py     # Smoothing effect analysis
-│   │
-│   └── smoothing_analysis/         # Smoothing parameter optimization
-│       ├── cross_val_smoothing.py  #   Monte Carlo cross-validation
-│       ├── verify_smoothing.py     #   Independent verification (seed=123)
-│       └── plot_results.py         #   Smoothing analysis figures
+│   └── smoothing_analysis/          # Smoothing justification
+│       ├── analyze_smoothing.py     #   Why smooth, how much, what impact
+│       └── optimize_gamma.py        #   Cross-validation to find optimal gamma
 │
-├── data/                           # Input and output data
-│   ├── city_graph_full.json        #   Road network (99,716 links)
-│   ├── slc_network.xml             #   OSM network for map-matching
-│   ├── popularity_results.npz      #   Raw popularity matrix (2,880 x N)
+├── data/                            # Input and output data
+│   ├── city_graph_full.json         #   Road network (99,716 links)
+│   ├── slc_network.xml              #   OSM network for map-matching
+│   ├── compressed_routes.parquet    #   Cleaned GPS trajectories
+│   ├── matched_routes.json          #   Map-matched routes
+│   ├── popularity_results.npz       #   Raw popularity matrix (2,880 x N)
 │   ├── popularity_results_smoothed.npz  # Smoothed (gamma=0.26)
-│   ├── two_phase_pagerank_vector.json   # Final PageRank output
-│   └── zipcode_population.json     #   Census population data
+│   └── two_phase_pagerank_vector.json   # Final PageRank output
 │
-├── results/                        # Experiment output logs
-│   ├── mu_tuning_results.txt       #   120-config grid search
-│   ├── strategy_tuning_results.txt #   Strategy A-F comparison
-│   ├── combo_tuning_results.txt    #   Combination strategies
-│   └── ...                         #   Other tuning results
+├── results/                         # Experiment output logs & JSON
 │
-├── figures/                        # All generated figures
-│   ├── project/                    #   MRE comparison, mu effect, etc.
-│   ├── doc/                        #   Publication figures (16 figs)
+├── figures/                         # All generated figures
+│   ├── project/                     #   MRE comparison, mu effect, etc.
+│   ├── doc/                         #   Publication figures (16 figs)
 │   │   └── generate_figures.py
-│   ├── smoothing/                  #   Cross-validation plots
-│   └── generate_project_figures.py #   Project figure generation
+│   ├── analysis/                    #   Data analysis plots
+│   ├── evaluation/                  #   Evaluation plots
+│   ├── smoothing/                   #   Legacy smoothing plots
+│   ├── smoothing_analysis/          #   Smoothing justification & gamma CV plots
+│   └── generate_project_figures.py  #   Project figure generation
 │
-├── docs/                           # Documentation
-│   ├── algorithm.md                #   Algorithm specification
-│   ├── self_loop_report.md         #   Full travel-time self-loop report
-│   ├── top_k_changelog.md          #   Parameter search changelog
-│   ├── smoothing_justification.md  #   Smoothing parameter analysis
-│   ├── traffic_events.md           #   Sept 2018 traffic events
-│   └── issue_report/               #   Development issue documentation
+├── docs/                            # Documentation
+│   ├── algorithm.md                 #   Algorithm specification
+│   ├── self_loop_report.md          #   Full travel-time self-loop report
+│   ├── top_k_changelog.md           #   Parameter search changelog
+│   ├── smoothing_justification.md   #   Smoothing parameter analysis
+│   ├── traffic_events.md            #   Sept 2018 traffic events
+│   └── issue_report/                #   Development issue documentation
 │
-├── latex/                          # LaTeX papers
-│   ├── two_phase_pagerank.tex/pdf  #   Main algorithm paper
+├── latex/                           # LaTeX papers
+│   ├── two_phase_pagerank.tex/pdf   #   Main algorithm paper
 │   └── eigenvector_equivalence.tex/pdf  # Eigenvector proofs
 │
-└── presentation/                   # Beamer slides
+└── presentation/                    # Beamer slides
     ├── slides.tex
     └── slides.pdf
 ```
@@ -137,6 +117,12 @@ Raw Popularity Matrix (NPZ, 2880 x N)
     |
     v
 Smoothed Popularity (NPZ) --> Teleportation vector E_N for PageRank
+    |
+    v
+[core/pagerank.py] -- Two-Phase PageRank with travel-time self-loops
+    |
+    v
+Stationary Distribution (JSON)
 ```
 
 ## Algorithm
@@ -166,11 +152,25 @@ Final output: $v_{final} = v_{up} + v_{down}$, renormalized.
 # Run the core PageRank algorithm
 python core/pagerank.py
 
-# Run with different smoothing
+# Comprehensive evaluation (49 random timeframes)
+python scripts/evaluation/evaluate.py
+
+# Quick evaluation (10 frames)
+python scripts/evaluation/evaluate.py --num-frames 10
+
+# Parameter tuning
+python scripts/tuning/tune_params.py --num-frames 10
+python scripts/tuning/tune_params.py --mu 10,15,20,25 --damping 0.75,0.80,0.85
+
+# Smoothing justification
+python scripts/smoothing_analysis/analyze_smoothing.py
+python scripts/smoothing_analysis/optimize_gamma.py
+
+# Generate smoothed data with different gamma
 python scripts/pipeline/generate_smoothed.py --gamma 0.10
 
-# Evaluate on 49 random timeframes
-python scripts/evaluation/evaluate_timeframes.py
+# Data analysis and statistics
+python scripts/pipeline/analyze_routes.py
 ```
 
 ## Data Coverage

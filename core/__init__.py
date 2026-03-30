@@ -8,4 +8,3 @@ from core.pagerank import (
     compute_speed_lane_weights,
     PARAMS,
 )
-from core.friction import build_custom_matrix, get_eval_metrics
