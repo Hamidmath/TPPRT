@@ -1,7 +1,0 @@
-\beamer@sectionintoc {1}{Problem \& Approach}{3}{0}{1}
-\beamer@sectionintoc {2}{Building the Transition Matrix $M_{2N}$}{6}{0}{2}
-\beamer@sectionintoc {3}{Building the Teleportation Vector $E_N$}{11}{0}{3}
-\beamer@sectionintoc {4}{The Power Iteration}{14}{0}{4}
-\beamer@sectionintoc {5}{Smoothing Justification}{16}{0}{5}
-\beamer@sectionintoc {6}{Results}{24}{0}{6}
-\beamer@sectionintoc {7}{Summary}{29}{0}{7}

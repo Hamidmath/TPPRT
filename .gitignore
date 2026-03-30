@@ -1,6 +1,30 @@
-venv/
+# Python
 __pycache__/
-popularity_results_smoothed.npz
+*.pyc
+*.pyo
+*.egg-info/
+venv/
+
+# Data (large files)
 data/matched_routes.json
+popularity_results_smoothed.npz
 popularity_results_smoothed_026.npz
-popularity_results_smoothed_026.npz
+
+# LaTeX build artifacts
+*.aux
+*.log
+*.out
+*.toc
+*.nav
+*.snm
+*.synctex.gz
+*.fls
+*.fdb_latexmk
+
+# OS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+.gemini/
