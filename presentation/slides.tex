@@ -541,12 +541,24 @@
 \end{frame}
 
 %─────────────────────────────────────────
-\begin{frame}{Before \& After Self-Loops}
+\begin{frame}{Worked Example: 4-Link Toy Network}
   \centering
-  \includegraphics[width=0.68\textwidth]{fig9_before_after.png}
+  \includegraphics[width=0.95\textwidth]{fig_toy_network.png}
 
-  Self-loops \good{concentrate mass on arterials}
-  instead of uniform spread
+  \medskip
+  \small
+  \begin{tabular}{lcccc}
+    \toprule
+    & Highway & Arterial & Connector & Local\\
+    \midrule
+    GPS input $E_N$ & 55\% & 25\% & 5\% & 15\%\\
+    $\mu=0$ output & 32.8\% & 27.4\% & 19.7\% & 20.0\%\\
+    $\mu=20$ output & \good{54.9\%} & \good{25.0\%} & \good{5.1\%} & \good{15.0\%}\\
+    \bottomrule
+  \end{tabular}
+
+  \smallskip
+  Self-loops \good{anchor mass} to where vehicles physically spend time
 \end{frame}
 
 %=================================================================
@@ -554,40 +566,45 @@
 %=================================================================
 
 %─────────────────────────────────────────
-\begin{frame}{The Four Tuneable Parameters}
+\begin{frame}{Final Results (49 Timeframes, Seed = 42)}
   \centering
-  \begin{tabular}{clcl}
+  \begin{tabular}{lcc}
     \toprule
-    Symbol & Name & Value & Controls\\
+    \textbf{Metric} & \textbf{Value}\\
     \midrule
-    $\gamma$ & Smoothing & 0.26 & Evidence propagation strength\\
-    $\mu$ & Dwell-time & 20 & Self-loop weight (road physics)\\
-    $\beta$ & Phase-drop & 0.90 & Active $\to$ dispersal rate\\
-    $d$ & Damping & 0.80 & Topology vs.\ ground truth\\
+    Top-100 MRE & \good{0.0317}\\
+    Overall MRE & \good{0.0471}\\
     \bottomrule
   \end{tabular}
 
   \bigskip
-  \begin{block}{Transferability}
-    For a new city: get road network $+$ some GPS data $\to$
-    grid-search over $(\gamma, \mu, \beta, d)$
-  \end{block}
+  \begin{tabular}{clcl}
+    \toprule
+    Symbol & Name & Value & Role\\
+    \midrule
+    $\gamma$ & Smoothing & 0.26 & Evidence propagation\\
+    $\mu$ & Dwell-time & 20 & Self-loop weight\\
+    $\beta$ & Phase-drop & 0.90 & Active $\to$ dispersal\\
+    $d$ & Damping & 0.80 & Topology vs.\ ground truth\\
+    \bottomrule
+  \end{tabular}
 \end{frame}
 
 %─────────────────────────────────────────
 \begin{frame}{Key Takeaways}
   \begin{enumerate}
-    \item \highlight{Transition matrix} $M_{2N}$ uses \textbf{only topology}\\
-          (road graph $+$ lengths $+$ speeds $\to$ two-phase block structure)
+    \item \highlight{Transition matrix} $M_{2N}$ encodes road physics:\\
+          topology $+$ lengths $+$ speeds $\to$ two-phase block structure with self-loops
     \bigskip
-    \item \highlight{Teleportation vector} $E_{2N}$ uses \textbf{only ground truth}\\
-          (GPS counts $\to$ Laplace $\to$ smoothing $\to$ normalise)
+    \item \highlight{Teleportation vector} $E_{2N}$ encodes ground truth:\\
+          GPS counts $\to$ Laplace $\to$ graph-diffusion smoothing $\to$ normalise
     \bigskip
-    \item \highlight{Smoothing justified} by cross-validation:\\
-          $\gamma^* = 0.26$ minimises MSE (interior minimum, U-shaped curve)
+    \item \highlight{Smoothing} cross-validated at $\gamma^* = 0.26$:\\
+          U-shaped MSE, input-optimal = output-optimal
     \bigskip
-    \item \highlight{Model achieves} MRE = \good{0.19}\\
-          ($37{,}800\times$ improvement from smoothing alone)
+    \item \highlight{Final model}: Top-100 MRE = \good{0.0317},
+          Overall MRE = \good{0.0471}\\
+          on 49 random 15-minute timeframes from September 2018
   \end{enumerate}
 \end{frame}
 
