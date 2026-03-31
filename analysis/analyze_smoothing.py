@@ -27,7 +27,7 @@ import numpy as np
 from scipy.sparse import csr_matrix
 from scipy.stats import pearsonr, spearmanr
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from core import build_two_phase_matrix, run_power_iteration, PARAMS
 import config
 

@@ -16,7 +16,7 @@ from typing import Dict, List
 import numpy as np
 from scipy import sparse
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import config
 
 ALPHA = 0.1  # Laplace smoothing pseudo-count

@@ -30,7 +30,7 @@ import numpy as np
 import scipy.sparse as sparse
 from scipy.stats import pearsonr
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from core import build_two_phase_matrix, PARAMS
 import config
 
