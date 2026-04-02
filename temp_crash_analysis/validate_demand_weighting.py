@@ -36,49 +36,12 @@ OUT_DIR = Path(__file__).resolve().parent
 
 # ── GPU / CPU backend selection ──────────────────────────────────
 
-try:
-    import cupy as cp
-    import cupyx.scipy.sparse as cp_sparse
-    # Test that sparse actually works (needs CUDA libraries)
-    _test = cp_sparse.csr_matrix(csr_matrix(np.eye(2)))
-    del _test
-    GPU_AVAILABLE = True
-    print("[BACKEND] GPU detected (CuPy). Using GPU-accelerated power iteration.")
-except Exception:
-    GPU_AVAILABLE = False
-    print("[BACKEND] GPU not usable. Using CPU (SciPy).")
-
-
-def power_iteration_gpu(M_csr, E_2N_np, damping, tol=1e-6, max_iter=100):
-    """GPU-accelerated power iteration using CuPy."""
-    M_gpu = cp_sparse.csr_matrix(M_csr)
-    E_gpu = cp.asarray(E_2N_np)
-    v = E_gpu.copy()
-    for k in range(max_iter):
-        v_new = damping * M_gpu.T.dot(v) + (1.0 - damping) * E_gpu
-        diff = float(cp.sum(cp.abs(v_new - v)))
-        v = v_new
-        if diff < tol:
-            break
-    return cp.asnumpy(v)
-
-
-def power_iteration_cpu(M_csr, E_2N_np, damping, tol=1e-6, max_iter=100):
-    """CPU power iteration using SciPy."""
-    v = E_2N_np.copy()
-    for k in range(max_iter):
-        v_new = damping * M_csr.T.dot(v) + (1.0 - damping) * E_2N_np
-        diff = np.sum(np.abs(v_new - v))
-        v = v_new
-        if diff < tol:
-            break
-    return v
+from core.gpu_backend import power_iteration as _gpu_pi, BACKEND_NAME
 
 
 def power_iteration(M_csr, E_2N_np, damping, tol=1e-6, max_iter=100):
-    if GPU_AVAILABLE:
-        return power_iteration_gpu(M_csr, E_2N_np, damping, tol, max_iter)
-    return power_iteration_cpu(M_csr, E_2N_np, damping, tol, max_iter)
+    """Dispatches to GPU (CuPy/PyTorch) if available, else CPU (SciPy)."""
+    return _gpu_pi(M_csr, E_2N_np, damping, tol, max_iter)
 
 
 # ── Data loading ─────────────────────────────────────────────────
@@ -405,7 +368,7 @@ def main():
 
     elapsed = _time.time() - t0
     print(f"\n  Total time: {elapsed:.0f}s ({elapsed/60:.1f} min)")
-    print(f"  Backend: {'GPU (CuPy)' if GPU_AVAILABLE else 'CPU (SciPy)'}")
+    print(f"  Backend: {BACKEND_NAME}")
 
 
 if __name__ == '__main__':
