@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>I-15 Crash Analysis &mdash; Demand-Weighted Model</title>
+<style>
+  :root { --accent:#1565C0; --accent-light:#e3f2fd; --red:#c62828; --green:#2e7d32;
+          --bg:#fafafa; --card:#fff; --text:#212121; --muted:#757575; --border:#e0e0e0; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Segoe UI','Helvetica Neue',Arial,sans-serif;
+         background:var(--bg); color:var(--text); line-height:1.7; }
+  .hero { background:linear-gradient(135deg,#b71c1c 0%,#e53935 60%,#ef5350 100%);
+          color:#fff; padding:55px 40px 45px; text-align:center; }
+  .hero h1 { font-size:2.2em; margin-bottom:10px; }
+  .hero .sub { font-size:1.1em; opacity:.9; margin-bottom:14px; }
+  .hero .meta { display:inline-flex; gap:24px; flex-wrap:wrap; justify-content:center;
+                font-size:.9em; opacity:.85; }
+  .container { max-width:1100px; margin:0 auto; padding:36px 30px; }
+  section { margin-bottom:45px; }
+  h2 { font-size:1.5em; color:var(--accent); margin-bottom:14px;
+       padding-bottom:7px; border-bottom:3px solid var(--accent); }
+  h3 { font-size:1.1em; color:#333; margin:18px 0 8px; }
+  p { margin-bottom:12px; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:10px;
+          padding:20px 24px; margin-bottom:20px; box-shadow:0 2px 8px rgba(0,0,0,.04); }
+  .card.highlight { border-left:5px solid var(--accent); background:var(--accent-light); }
+  .card.success { border-left:5px solid var(--green); background:#f1f8e9; }
+  .card.warning { border-left:5px solid var(--red); background:#fef2f2; }
+  table { width:100%; border-collapse:collapse; margin:14px 0; font-size:.9em; }
+  th { background:var(--accent); color:#fff; padding:9px 12px; text-align:left; }
+  td { padding:7px 12px; border-bottom:1px solid var(--border); }
+  tr:nth-child(even) { background:#f5f5f5; }
+  .pos { color:var(--green); font-weight:600; }
+  .neg { color:var(--red); font-weight:600; }
+  .figure { background:var(--card); border:1px solid var(--border); border-radius:10px;
+            padding:18px; margin:20px 0; }
+  .figure img { width:100%; height:auto; border-radius:6px; border:1px solid #eee; }
+  .figure .cap { margin-top:12px; padding:10px 14px; background:#f5f5f5;
+                 border-radius:6px; font-size:.9em; color:#555; line-height:1.6; }
+  .figure .cap strong { color:var(--accent); }
+  .figure .ftitle { font-weight:700; font-size:1em; color:var(--accent); margin-bottom:10px; }
+  .eq { text-align:center; padding:16px; font-size:1.1em; font-style:italic;
+        background:#f5f5f5; border-radius:8px; margin:14px 0; }
+  .kpi { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+         gap:14px; margin:18px 0; }
+  .kpi-card { background:var(--card); border:1px solid var(--border); border-radius:10px;
+              padding:18px; text-align:center; }
+  .kpi-card .val { font-size:1.8em; font-weight:700; color:var(--accent); }
+  .kpi-card .lbl { font-size:.8em; color:var(--muted); margin-top:4px; }
+  .kpi-card.good .val { color:var(--green); }
+  .kpi-card.bad .val { color:var(--red); }
+  .ic { background:#eceff1; padding:2px 6px; border-radius:4px;
+        font-family:'Fira Code',monospace; font-size:.88em; color:#d32f2f; }
+  footer { text-align:center; padding:28px; color:var(--muted); font-size:.85em;
+           border-top:1px solid var(--border); margin-top:36px; }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <h1>I-15 Crash Analysis &mdash; Demand-Weighted Model</h1>
+  <div class="sub">Comparing Original (d=0.80) vs Demand-Weighted (d=0.94, d=0.96) Crash Detection</div>
+  <div class="meta">
+    <span>September 20, 2018 &middot; I-15 SB Draper, UT</span>
+    <span>Demand prior: Sept 1&ndash;15 (training set)</span>
+    <span>Backend: cupy</span>
+    <span>Total: 96.6s</span>
+  </div>
+</div>
+
+<div class="container">
+
+<section>
+  <h2>1. What Changed</h2>
+  <div class="card highlight">
+    <h3>Demand-Weighted Transition Matrix</h3>
+    <p>The original crash analysis used the standard model with <strong>d=0.80</strong> (20% ground truth).
+    This report repeats the analysis with the <strong>demand-weighted model</strong>, which embeds
+    average traffic demand into the transition matrix:</p>
+    <div class="eq">P(i &rarr; j) &prop; weights[j] &times; demand[j]<sup>&gamma;</sup></div>
+    <p>This allows <strong>d=0.94&ndash;0.96</strong> (only 4&ndash;6% ground truth) while maintaining
+    low MRE. The demand prior is computed from <strong>Sept 1&ndash;15 only</strong> (the crash on
+    Sept 20 is in the unseen test set).</p>
+  </div>
+
+  <h3>Three Configurations Compared</h3>
+  <table>
+    <tr><th>Config</th><th>Damping (d)</th><th>&gamma;</th><th>Ground Truth</th><th>Overall MRE</th></tr>
+    <tr><td>Original</td><td>0.80</td><td>0</td><td>20%</td><td>0.0464</td></tr>
+    <tr><td>Demand (balanced)</td><td>0.94</td><td>0.15</td><td>6%</td><td>0.0429</td></tr>
+    <tr><td>Demand (aggressive)</td><td>0.96</td><td>0.20</td><td>4%</td><td>0.0385</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>2. I-15 SB Smoothed Traffic</h2>
+  <div class="figure">
+    <div class="ftitle">Figure 1: Smoothed Traffic Mass on I-15 SB</div>
+    <img src="fig_crash_dw_timeseries.png" alt="I-15 SB timeseries">
+    <div class="cap">
+      <strong>Red:</strong> crash day. <strong>Blue:</strong> baseline average &plusmn; 1 std.
+      <strong>Shaded:</strong> crash window (7:30&ndash;11:00 AM). The input data is identical across
+      all model configurations &mdash; the difference is how the model processes it.
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>3. Crash Detection: Deviation Comparison</h2>
+  <div class="figure">
+    <div class="ftitle">Figure 2: PageRank Deviation from Baseline &mdash; All Three Models</div>
+    <img src="fig_crash_dw_deviation.png" alt="Deviation comparison">
+    <div class="cap">
+      Each panel shows one corridor. Three lines compare the original model (red) with
+      demand-weighted models (green=d=0.94, blue=d=0.96). The crash signature is visible
+      in all three models, confirming the demand-weighted model detects the crash even with
+      only 4% ground truth reliance.
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>4. PageRank Mass at Snapshot Times</h2>
+  <div class="figure">
+    <div class="ftitle">Figure 3: PageRank Mass Bars &mdash; Crash Day vs Baseline</div>
+    <img src="fig_crash_dw_bars.png" alt="PageRank bars">
+    <div class="cap">
+      Grouped bar charts for each model configuration. Red = crash day, blue = baseline average.
+      Each row is a different model. The crash/baseline contrast is preserved across all
+      configurations.
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>5. Full Deviation Table</h2>
+  <table>
+    <tr><th>Time</th><th>Model</th><th>I-15 SB</th><th>I-15 NB</th><th>Surface</th></tr>
+    <tr><td>06:00</td><td>Original (d=0.80, γ=0)</td><td class="pos">+1.7%</td><td class="pos">+96.5%</td><td class="pos">+10.4%</td></tr>
+    <tr><td>06:00</td><td>Demand (d=0.94, γ=0.15)</td><td class="pos">+1.7%</td><td class="pos">+96.6%</td><td class="pos">+10.4%</td></tr>
+    <tr><td>06:00</td><td>Demand (d=0.96, γ=0.20)</td><td class="pos">+1.7%</td><td class="pos">+96.7%</td><td class="pos">+10.4%</td></tr>
+    <tr><td>07:30</td><td>Original (d=0.80, γ=0)</td><td class="pos">+17.4%</td><td class="neg">-70.0%</td><td class="neg">-28.8%</td></tr>
+    <tr><td>07:30</td><td>Demand (d=0.94, γ=0.15)</td><td class="pos">+17.4%</td><td class="neg">-70.0%</td><td class="neg">-28.8%</td></tr>
+    <tr><td>07:30</td><td>Demand (d=0.96, γ=0.20)</td><td class="pos">+17.4%</td><td class="neg">-70.0%</td><td class="neg">-28.8%</td></tr>
+    <tr><td>08:30</td><td>Original (d=0.80, γ=0)</td><td class="neg">-18.9%</td><td class="neg">-92.7%</td><td class="neg">-58.6%</td></tr>
+    <tr><td>08:30</td><td>Demand (d=0.94, γ=0.15)</td><td class="neg">-18.9%</td><td class="neg">-92.7%</td><td class="neg">-58.6%</td></tr>
+    <tr><td>08:30</td><td>Demand (d=0.96, γ=0.20)</td><td class="neg">-18.9%</td><td class="neg">-92.7%</td><td class="neg">-58.6%</td></tr>
+    <tr><td>09:30</td><td>Original (d=0.80, γ=0)</td><td class="pos">+12.0%</td><td class="pos">+118.6%</td><td class="neg">-11.2%</td></tr>
+    <tr><td>09:30</td><td>Demand (d=0.94, γ=0.15)</td><td class="pos">+12.1%</td><td class="pos">+118.7%</td><td class="neg">-11.3%</td></tr>
+    <tr><td>09:30</td><td>Demand (d=0.96, γ=0.20)</td><td class="pos">+12.1%</td><td class="pos">+118.7%</td><td class="neg">-11.3%</td></tr>
+    <tr><td>10:30</td><td>Original (d=0.80, γ=0)</td><td class="pos">+291.4%</td><td class="neg">-40.9%</td><td class="neg">-8.3%</td></tr>
+    <tr><td>10:30</td><td>Demand (d=0.94, γ=0.15)</td><td class="pos">+292.0%</td><td class="neg">-40.9%</td><td class="neg">-8.3%</td></tr>
+    <tr><td>10:30</td><td>Demand (d=0.96, γ=0.20)</td><td class="pos">+292.4%</td><td class="neg">-40.9%</td><td class="neg">-8.3%</td></tr>
+    <tr><td>11:30</td><td>Original (d=0.80, γ=0)</td><td class="pos">+36.7%</td><td class="pos">+37.1%</td><td class="pos">+15.2%</td></tr>
+    <tr><td>11:30</td><td>Demand (d=0.94, γ=0.15)</td><td class="pos">+36.6%</td><td class="pos">+37.2%</td><td class="pos">+15.2%</td></tr>
+    <tr><td>11:30</td><td>Demand (d=0.96, γ=0.20)</td><td class="pos">+36.6%</td><td class="pos">+37.3%</td><td class="pos">+15.2%</td></tr>
+    <tr><td>13:00</td><td>Original (d=0.80, γ=0)</td><td class="neg">-47.3%</td><td class="neg">-0.2%</td><td class="neg">-39.1%</td></tr>
+    <tr><td>13:00</td><td>Demand (d=0.94, γ=0.15)</td><td class="neg">-47.3%</td><td class="neg">-0.2%</td><td class="neg">-39.1%</td></tr>
+    <tr><td>13:00</td><td>Demand (d=0.96, γ=0.20)</td><td class="neg">-47.4%</td><td class="neg">-0.2%</td><td class="neg">-39.1%</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>6. Summary</h2>
+  <div class="figure">
+    <div class="ftitle">Figure 4: Summary &mdash; Model Comparison</div>
+    <img src="fig_crash_dw_summary.png" alt="Summary panel">
+    <div class="cap">
+      <strong>(A)</strong> I-15 SB deviation over time for all three models.
+      <strong>(B)</strong> Key deviations at pre-crash (06:00), peak disruption (08:30),
+      and clearance rebound (10:30).
+    </div>
+  </div>
+
+  <div class="card success">
+    <h3>Key Finding</h3>
+    <p>The demand-weighted model (d=0.96, &gamma;=0.20) successfully detects the I-15 crash event
+    using only <strong>4% ground truth</strong>. The crash signature &mdash; disruption at 08:30
+    and rebound at 10:30 &mdash; is preserved across all three model configurations.</p>
+    <p>This confirms that the demand-weighted transition matrix captures enough structural
+    traffic information to detect real-world disruptions without heavy reliance on
+    per-timeframe GPS observations.</p>
+  </div>
+</section>
+
+<section>
+  <h2>7. Computational Performance</h2>
+  <table>
+    <tr><th>Configuration</th><th>Matrix Build</th><th>PR Runs</th><th>PR Time</th><th>Per Run</th></tr>
+    <tr><td>Original (d=0.80, γ=0)</td><td>1.01s</td><td>28</td><td>0.37s</td><td>13.1ms</td></tr>
+    <tr><td>Demand (d=0.94, γ=0.15)</td><td>0.98s</td><td>28</td><td>0.66s</td><td>23.6ms</td></tr>
+    <tr><td>Demand (d=0.96, γ=0.20)</td><td>0.97s</td><td>28</td><td>0.66s</td><td>23.6ms</td></tr>
+  </table>
+  <p>Backend: <strong>cupy</strong>. Total analysis time: <strong>96.6s</strong>.</p>
+</section>
+
+</div>
+
+<footer>
+  I-15 Crash Analysis &mdash; Demand-Weighted Two-Phase PageRank &mdash;
+  Salt Lake City (N=99,716) &mdash; April 2026
+</footer>
+</body>
+</html>
