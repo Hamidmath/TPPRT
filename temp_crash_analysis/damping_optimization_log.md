@@ -381,6 +381,62 @@ column).
 
 ---
 
+## 10. Rigorous Validation: Train/Test Splits
+
+**[2026-04-02 13:37] -- Validation initiated to address data leakage concern**
+
+The initial experiments computed the demand prior from the same pool of 2,880 timeframes used for
+evaluation. To prove the improvement generalizes, we ran three independent validation strategies
+where the demand prior is computed ONLY from training data and evaluated on held-out test data.
+
+### Validation 1: Temporal Split (Train Sept 1-15, Test Sept 16-30)
+
+| Configuration | Overall MRE | Top-100 MRE | Meets Target? |
+|---|---|---|---|
+| Baseline d=0.80, γ=0 | 0.0478 ± 0.0053 | 0.0255 ± 0.0081 | Yes |
+| No demand d=0.96, γ=0 | 0.2016 ± 0.0251 | 0.1263 ± 0.0292 | No |
+| γ=0.10, d=0.91 | 0.0472 ± 0.0051 | 0.0266 ± 0.0083 | Yes (d>0.90) |
+| γ=0.15, d=0.94 | 0.0439 ± 0.0047 | 0.0257 ± 0.0079 | Yes (d=0.94) |
+| γ=0.20, d=0.94 | **0.0269 ± 0.0028** | **0.0166 ± 0.0051** | **Yes (d=0.94)** |
+| γ=0.20, d=0.96 | **0.0395 ± 0.0042** | **0.0243 ± 0.0074** | **Yes (d=0.96)** |
+
+### Validation 2: Day-of-Week Split (Train Mon/Wed/Fri, Test Tue/Thu/Sat/Sun)
+
+| Configuration | Overall MRE | Top-100 MRE | Meets Target? |
+|---|---|---|---|
+| Baseline d=0.80 | 0.0457 ± 0.0048 | 0.0279 ± 0.0110 | Yes |
+| γ=0.15, d=0.94 | 0.0420 ± 0.0043 | 0.0282 ± 0.0118 | Yes (d=0.94) |
+| γ=0.20, d=0.94 | **0.0257 ± 0.0026** | **0.0182 ± 0.0079** | **Yes** |
+| γ=0.20, d=0.96 | **0.0377 ± 0.0038** | **0.0267 ± 0.0113** | **Yes** |
+
+### Validation 3: 5-Fold Cross-Validation (80% train, 20% test)
+
+| Configuration | Overall MRE | Top-100 MRE | Meets Target? |
+|---|---|---|---|
+| Baseline d=0.80 | 0.0464 ± 0.0007 | 0.0294 ± 0.0011 | Yes |
+| γ=0.10, d=0.91 | 0.0459 ± 0.0007 | 0.0308 ± 0.0012 | Yes (d=0.91) |
+| γ=0.15, d=0.94 | 0.0427 ± 0.0006 | 0.0298 ± 0.0012 | Yes (d=0.94) |
+| γ=0.20, d=0.94 | **0.0261 ± 0.0004** | **0.0193 ± 0.0009** | **Yes** |
+| γ=0.20, d=0.96 | **0.0383 ± 0.0006** | **0.0281 ± 0.0012** | **Yes** |
+
+### Cross-Validation Summary (Average Overall MRE across all 3 strategies)
+
+| Configuration | Temporal | DoW | 5-Fold | **Average** |
+|---|---|---|---|---|
+| Baseline d=0.80 | 0.0478 | 0.0457 | 0.0464 | 0.0466 |
+| γ=0.10, d=0.91 | 0.0472 | 0.0452 | 0.0459 | **0.0461** |
+| γ=0.15, d=0.94 | 0.0439 | 0.0420 | 0.0427 | **0.0429** |
+| γ=0.20, d=0.94 | 0.0269 | 0.0257 | 0.0261 | **0.0263** |
+| γ=0.20, d=0.96 | 0.0395 | 0.0377 | 0.0383 | **0.0385** |
+
+**Key finding:** The demand-weighted improvement generalizes fully. Even the strictest
+temporal split (train first half, test second half including crash day) shows γ=0.20, d=0.96
+achieving OV=0.0395 — better than baseline at d=0.80 (0.0478).
+
+Runtime: 61.6 minutes (CPU backend — CuPy sparse library unavailable).
+
+---
+
 ## Appendix: Experimental Setup
 
 - **Network:** Utah DOT road network (compressed routes from ATSPM data)

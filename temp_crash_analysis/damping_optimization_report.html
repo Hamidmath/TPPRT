@@ -433,6 +433,219 @@ for each link i:
   </table>
 </section>
 
+<!-- ================================================================ -->
+<section id="validation">
+  <h2>9. Rigorous Validation: Train/Test Splits</h2>
+
+  <div class="card highlight">
+    <h3>The Data Leakage Concern</h3>
+    <p>In the initial experiments (Sections 2&ndash;7), the demand prior was computed from
+    300 randomly sampled timeframes from the <em>same pool</em> of 2,880 frames used for evaluation.
+    This means the matrix &ldquo;saw&rdquo; the average pattern of the test data &mdash; a form of
+    data leakage. To validate that the improvement is genuine, we must compute the demand prior
+    from a <strong>training set</strong> and evaluate on a <strong>held-out test set</strong> that
+    the matrix has never seen.</p>
+  </div>
+
+  <h3>Three Validation Strategies</h3>
+  <table>
+    <tr><th>Strategy</th><th>Training Set</th><th>Test Set</th><th>Rationale</th></tr>
+    <tr>
+      <td><strong>Temporal Split</strong></td>
+      <td>Sept 1&ndash;15 (1,440 frames)</td>
+      <td>Sept 16&ndash;30 (1,440 frames)</td>
+      <td>Strictest test: demand learned from first half must generalize to second half.
+      Tests temporal stability of traffic patterns.</td>
+    </tr>
+    <tr>
+      <td><strong>Day-of-Week Split</strong></td>
+      <td>Mon/Wed/Fri (1,172 frames)</td>
+      <td>Tue/Thu/Sat/Sun (1,708 frames)</td>
+      <td>Tests whether demand patterns are consistent across different days of the week.
+      Weekday training, mixed weekday/weekend testing.</td>
+    </tr>
+    <tr>
+      <td><strong>5-Fold Random CV</strong></td>
+      <td>80% random (2,304 frames)</td>
+      <td>20% random (576 frames)</td>
+      <td>Standard cross-validation. Repeated 5 times with different random splits.
+      Tests robustness to sample selection.</td>
+    </tr>
+  </table>
+
+  <p>For each split, the demand prior is computed <strong>only from the training frames</strong>.
+  The matrix is built using this training demand, and then evaluated on 49 randomly sampled
+  <strong>test frames</strong> that the matrix has never seen.</p>
+
+  <div class="figure">
+    <div class="ftitle">Figure 4: Rigorous Validation Across Three Split Strategies</div>
+    <img src="fig_validation.png" alt="Validation results across three split strategies">
+    <div class="cap">
+      Bar charts showing Overall MRE (solid) and Top-100 MRE (transparent) for 8 configurations
+      across three validation strategies. Red dashed line marks the 0.05 target.
+      The demand-weighted configurations consistently meet or beat the baseline across all splits.
+    </div>
+  </div>
+
+  <h3>Results: Temporal Split (Sept 1&ndash;15 &rarr; Sept 16&ndash;30)</h3>
+  <p>This is the <strong>strictest test</strong>: the demand prior is learned from the first two weeks
+  and must predict the second two weeks &mdash; which includes the I-15 crash event (Sept 20).</p>
+  <table>
+    <tr><th>Configuration</th><th>Overall MRE</th><th>Top-100 MRE</th><th>Meets Target?</th></tr>
+    <tr><td>Baseline d=0.80, &gamma;=0</td><td>0.0478 &plusmn; 0.0053</td><td>0.0255 &plusmn; 0.0081</td><td class="pos">Yes</td></tr>
+    <tr><td>No demand d=0.96, &gamma;=0</td><td class="neg">0.2016 &plusmn; 0.0251</td><td class="neg">0.1263 &plusmn; 0.0292</td><td class="neg">No (4&times; target)</td></tr>
+    <tr><td>&gamma;=0.10, d=0.91</td><td class="pos">0.0472 &plusmn; 0.0051</td><td>0.0266</td><td class="pos">Yes (d&gt;0.90)</td></tr>
+    <tr><td>&gamma;=0.15, d=0.94</td><td class="pos">0.0439 &plusmn; 0.0047</td><td>0.0257</td><td class="pos">Yes (d=0.94)</td></tr>
+    <tr style="background:#c8e6c9;"><td><strong>&gamma;=0.20, d=0.94</strong></td><td class="pos"><strong>0.0269 &plusmn; 0.0028</strong></td><td class="pos"><strong>0.0166</strong></td><td class="pos"><strong>Yes (d=0.94)</strong></td></tr>
+    <tr style="background:#e8f5e9;"><td><strong>&gamma;=0.20, d=0.96</strong></td><td class="pos"><strong>0.0395 &plusmn; 0.0042</strong></td><td class="pos"><strong>0.0243</strong></td><td class="pos"><strong>Yes (d=0.96)</strong></td></tr>
+  </table>
+
+  <h3>Results: Day-of-Week Split</h3>
+  <table>
+    <tr><th>Configuration</th><th>Overall MRE</th><th>Top-100 MRE</th><th>Meets Target?</th></tr>
+    <tr><td>Baseline d=0.80, &gamma;=0</td><td>0.0457 &plusmn; 0.0048</td><td>0.0279</td><td class="pos">Yes</td></tr>
+    <tr><td>&gamma;=0.15, d=0.94</td><td class="pos">0.0420 &plusmn; 0.0043</td><td>0.0282</td><td class="pos">Yes (d=0.94)</td></tr>
+    <tr style="background:#c8e6c9;"><td><strong>&gamma;=0.20, d=0.94</strong></td><td class="pos"><strong>0.0257 &plusmn; 0.0026</strong></td><td class="pos"><strong>0.0182</strong></td><td class="pos"><strong>Yes (d=0.94)</strong></td></tr>
+    <tr style="background:#e8f5e9;"><td><strong>&gamma;=0.20, d=0.96</strong></td><td class="pos"><strong>0.0377 &plusmn; 0.0038</strong></td><td class="pos"><strong>0.0267</strong></td><td class="pos"><strong>Yes (d=0.96)</strong></td></tr>
+  </table>
+
+  <h3>Results: 5-Fold Cross-Validation</h3>
+  <table>
+    <tr><th>Configuration</th><th>Overall MRE</th><th>Top-100 MRE</th><th>Meets Target?</th></tr>
+    <tr><td>Baseline d=0.80, &gamma;=0</td><td>0.0464 &plusmn; 0.0007</td><td>0.0294</td><td class="pos">Yes</td></tr>
+    <tr><td>&gamma;=0.10, d=0.91</td><td class="pos">0.0459 &plusmn; 0.0007</td><td>0.0308</td><td class="pos">Yes (d=0.91)</td></tr>
+    <tr><td>&gamma;=0.15, d=0.94</td><td class="pos">0.0427 &plusmn; 0.0006</td><td>0.0298</td><td class="pos">Yes (d=0.94)</td></tr>
+    <tr style="background:#c8e6c9;"><td><strong>&gamma;=0.20, d=0.94</strong></td><td class="pos"><strong>0.0261 &plusmn; 0.0004</strong></td><td class="pos"><strong>0.0193</strong></td><td class="pos"><strong>Yes (d=0.94)</strong></td></tr>
+    <tr style="background:#e8f5e9;"><td><strong>&gamma;=0.20, d=0.96</strong></td><td class="pos"><strong>0.0383 &plusmn; 0.0006</strong></td><td class="pos"><strong>0.0281</strong></td><td class="pos"><strong>Yes (d=0.96)</strong></td></tr>
+  </table>
+
+  <h3>Cross-Validation Summary</h3>
+  <table>
+    <tr><th>Configuration</th><th>Temporal</th><th>Day-of-Week</th><th>5-Fold CV</th><th>Average</th></tr>
+    <tr><td>Baseline d=0.80</td><td>0.0478</td><td>0.0457</td><td>0.0464</td><td>0.0466</td></tr>
+    <tr><td>No demand d=0.96</td><td class="neg">0.2016</td><td class="neg">0.1916</td><td class="neg">0.1948</td><td class="neg">0.1960</td></tr>
+    <tr><td>&gamma;=0.10, d=0.91</td><td class="pos">0.0472</td><td class="pos">0.0452</td><td class="pos">0.0459</td><td class="pos">0.0461</td></tr>
+    <tr><td>&gamma;=0.15, d=0.94</td><td class="pos">0.0439</td><td class="pos">0.0420</td><td class="pos">0.0427</td><td class="pos">0.0429</td></tr>
+    <tr style="background:#c8e6c9;"><td><strong>&gamma;=0.20, d=0.94</strong></td><td class="pos"><strong>0.0269</strong></td><td class="pos"><strong>0.0257</strong></td><td class="pos"><strong>0.0261</strong></td><td class="pos"><strong>0.0263</strong></td></tr>
+    <tr style="background:#e8f5e9;"><td><strong>&gamma;=0.20, d=0.96</strong></td><td class="pos"><strong>0.0395</strong></td><td class="pos"><strong>0.0377</strong></td><td class="pos"><strong>0.0383</strong></td><td class="pos"><strong>0.0385</strong></td></tr>
+  </table>
+
+  <div class="card success">
+    <h3>Validation Conclusion</h3>
+    <p>The demand-weighted improvement <strong>generalizes across all three validation strategies</strong>:</p>
+    <ul style="margin-left:18px;">
+      <li><strong>Temporal split</strong> (strictest): &gamma;=0.20, d=0.96 achieves OV=0.0395 on
+      unseen second-half data &mdash; better than baseline at d=0.80 (0.0478)</li>
+      <li><strong>Day-of-week split</strong>: Results are consistent, confirming demand patterns
+      are stable across different days</li>
+      <li><strong>5-fold CV</strong>: Very low standard deviation across folds (&plusmn;0.0006),
+      showing the result is robust to sample selection</li>
+      <li>The <strong>average across all validations</strong> for &gamma;=0.20, d=0.96 is
+      <strong>0.0385</strong> &mdash; well below the 0.05 target</li>
+    </ul>
+    <p>This confirms the demand prior captures a <strong>stable structural property</strong> of the
+    network (which links carry more traffic) rather than overfitting to specific timeframes.</p>
+  </div>
+</section>
+
+<!-- ================================================================ -->
+<section id="explanation">
+  <h2>10. Detailed Explanation: Why This Works</h2>
+
+  <h3>The Core Problem</h3>
+  <div class="card">
+    <p>The PageRank power iteration computes:</p>
+    <div class="eq">v = d &middot; M<sup>T</sup> &middot; v + (1 &minus; d) &middot; E</div>
+    <p>At convergence, the prediction <strong>v</strong> is a weighted blend of two forces:</p>
+    <ul style="margin-left:18px;">
+      <li><strong>Matrix force</strong> (weight d): The transition matrix M redistributes mass
+      according to network topology &mdash; adjacency, self-loops, speed/lane weights</li>
+      <li><strong>Teleportation force</strong> (weight 1&minus;d): The ground-truth GPS data E
+      anchors the prediction to observed traffic patterns</li>
+    </ul>
+    <p>When d is high (e.g., 0.96), the matrix dominates. If the matrix's stationary distribution
+    &pi; differs significantly from E, then v drifts away from E and the MRE increases.</p>
+  </div>
+
+  <h3>Why the Original Matrix Fails at High Damping</h3>
+  <div class="card">
+    <p>The original matrix (with &gamma;=0) knows only <strong>topology</strong>:</p>
+    <ul style="margin-left:18px;">
+      <li><strong>Adjacency:</strong> Which links connect to which (from the road network graph)</li>
+      <li><strong>Self-loops:</strong> &mu; &middot; length / speed &mdash; how long vehicles dwell
+      on each link</li>
+      <li><strong>Phase structure:</strong> Up/Down phases with transition rate &beta;</li>
+    </ul>
+    <p>What it does <em>not</em> know:</p>
+    <ul style="margin-left:18px;">
+      <li>That I-15 carries 100&times; more traffic than a residential street</li>
+      <li>That morning rush flows southbound and evening rush flows northbound</li>
+      <li>That commercial corridors have different demand than residential areas</li>
+    </ul>
+    <p>Without demand information, the matrix's stationary distribution &pi; is determined by
+    network connectivity and self-loop weights &mdash; which correlate weakly with actual traffic
+    demand. The result: at d=0.96, the prediction reflects road topology, not traffic reality.</p>
+  </div>
+
+  <h3>What Demand Weighting Adds</h3>
+  <div class="card success">
+    <p>By multiplying each transition weight by <strong>demand[j]<sup>&gamma;</sup></strong>, we tell
+    the matrix: &ldquo;when traffic leaves link i, it is more likely to go to link j if j typically
+    carries more traffic.&rdquo;</p>
+
+    <p><strong>Concrete example:</strong> Consider a freeway on-ramp (link i) with two successors:
+    I-15 mainline (link j<sub>1</sub>, high demand) and a service road (link j<sub>2</sub>, low demand).</p>
+    <ul style="margin-left:18px;">
+      <li><strong>Without demand weighting (&gamma;=0):</strong> Both successors get equal transition
+      weight (both have speed ~31 m/s). P(i&rarr;j<sub>1</sub>) &approx; P(i&rarr;j<sub>2</sub>).</li>
+      <li><strong>With demand weighting (&gamma;=0.15):</strong> If j<sub>1</sub> has 50&times; the
+      demand of j<sub>2</sub>, then P(i&rarr;j<sub>1</sub>) gets multiplied by 50<sup>0.15</sup> &approx; 1.86,
+      while j<sub>2</sub> stays near 1.0. Now 65% of traffic goes to the freeway, 35% to the
+      service road &mdash; much more realistic.</li>
+    </ul>
+    <p>This effect propagates through the entire network: high-demand corridors attract more flow
+    in the matrix's stationary distribution, bringing &pi; closer to E without needing E directly.</p>
+  </div>
+
+  <h3>Why It Generalizes (Not Overfitting)</h3>
+  <div class="card highlight">
+    <p>The demand prior captures <strong>structural properties</strong> of the traffic network that
+    are stable over time:</p>
+    <ul style="margin-left:18px;">
+      <li><strong>Road hierarchy:</strong> Freeways carry more traffic than arterials, which carry
+      more than local streets. This doesn't change week to week.</li>
+      <li><strong>Land use patterns:</strong> Commercial corridors (downtown SLC) have consistently
+      high demand; residential areas (suburbs) have consistently lower demand.</li>
+      <li><strong>Commuting corridors:</strong> I-15, I-80, and I-215 are always the highest-demand
+      links in the network.</li>
+    </ul>
+    <p>The validation confirms this: demand learned from Sept 1&ndash;15 predicts Sept 16&ndash;30
+    equally well. The temporal split test includes the I-15 crash day (Sept 20) in the test set,
+    yet the model still achieves OV=0.0395 &mdash; showing it handles both normal and disrupted
+    traffic days.</p>
+  </div>
+
+  <h3>The Role of &gamma;</h3>
+  <div class="card">
+    <p>&gamma; controls the <strong>strength of the demand signal</strong> relative to the
+    topological signal in the transition matrix:</p>
+    <table>
+      <tr><th>&gamma;</th><th>Demand Influence</th><th>Behavior</th></tr>
+      <tr><td>0</td><td>None</td><td>Original model &mdash; pure topology</td></tr>
+      <tr><td>0.05&ndash;0.10</td><td>Mild</td><td>Demand slightly favors popular links</td></tr>
+      <tr><td>0.15&ndash;0.20</td><td>Moderate (sweet spot)</td><td>Demand meaningfully guides flow while
+      topology still shapes redistribution</td></tr>
+      <tr><td>0.30&ndash;0.50</td><td>Strong</td><td>Demand dominates; topology becomes secondary</td></tr>
+      <tr><td>&ge; 0.80</td><td>Overwhelming</td><td>Matrix essentially memorizes the demand
+      distribution &mdash; trivial overfitting</td></tr>
+    </table>
+    <p>The sweet spot (&gamma; = 0.15&ndash;0.20) balances two information sources:
+    the <strong>demand prior</strong> tells the matrix WHERE traffic goes,
+    while the <strong>topology</strong> tells it HOW traffic redistributes through the network.
+    Together, they produce accurate predictions even with minimal ground-truth input.</p>
+  </div>
+</section>
+
 </div>
 
 <footer>
