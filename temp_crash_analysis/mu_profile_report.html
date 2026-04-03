@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Learning the mu Profile — Cross-Validated Dwell-Time Analysis</title>
+<style>
+  :root { --accent:#1565C0; --accent-light:#e3f2fd; --red:#c62828; --green:#2e7d32;
+          --bg:#fafafa; --card:#fff; --text:#212121; --muted:#757575; --border:#e0e0e0; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Segoe UI',Arial,sans-serif; background:var(--bg);
+         color:var(--text); line-height:1.75; }
+  .hero { background:linear-gradient(135deg,#0d47a1 0%,#1565c0 60%,#42a5f5 100%);
+          color:#fff; padding:55px 40px 45px; text-align:center; }
+  .hero h1 { font-size:2.1em; margin-bottom:10px; }
+  .hero .sub { font-size:1.1em; opacity:.9; margin-bottom:14px; }
+  .hero .meta { display:inline-flex; gap:20px; flex-wrap:wrap; justify-content:center;
+                font-size:.88em; opacity:.85; }
+  .container { max-width:1120px; margin:0 auto; padding:36px 28px; }
+  section { margin-bottom:48px; }
+  h2 { font-size:1.5em; color:var(--accent); margin-bottom:14px;
+       padding-bottom:7px; border-bottom:3px solid var(--accent); }
+  h3 { font-size:1.12em; color:#333; margin:20px 0 10px; }
+  p { margin-bottom:13px; }
+  ul,ol { margin-left:22px; margin-bottom:13px; }
+  li { margin-bottom:5px; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:10px;
+          padding:22px 26px; margin-bottom:22px; box-shadow:0 2px 6px rgba(0,0,0,.04); }
+  .card.highlight { border-left:5px solid var(--accent); background:var(--accent-light); }
+  .card.success { border-left:5px solid var(--green); background:#f1f8e9; }
+  .card.warning { border-left:5px solid var(--red); background:#fef2f2; }
+  table { width:100%; border-collapse:collapse; margin:14px 0; font-size:.9em; }
+  th { background:var(--accent); color:#fff; padding:9px 12px; text-align:left; }
+  td { padding:8px 12px; border-bottom:1px solid var(--border); }
+  tr:nth-child(even) { background:#f5f5f5; }
+  .pos { color:var(--green); font-weight:600; }
+  .neg { color:var(--red); font-weight:600; }
+  .figure { background:var(--card); border:1px solid var(--border); border-radius:10px;
+            padding:18px; margin:22px 0; box-shadow:0 2px 6px rgba(0,0,0,.04); }
+  .figure img { width:100%; height:auto; border-radius:6px; border:1px solid #eee; }
+  .figure .cap { margin-top:12px; padding:10px 14px; background:#f5f5f5;
+                 border-radius:6px; font-size:.9em; color:#555; line-height:1.6; }
+  .figure .cap strong { color:var(--accent); }
+  .figure .ftitle { font-weight:700; font-size:1.02em; color:var(--accent); margin-bottom:10px; }
+  .eq { text-align:center; padding:16px; font-size:1.08em; font-style:italic;
+        background:#f5f5f5; border-radius:8px; margin:14px 0; }
+  .kpi { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+         gap:14px; margin:18px 0; }
+  .kpi-card { background:var(--card); border:1px solid var(--border); border-radius:10px;
+              padding:18px; text-align:center; }
+  .kpi-card .val { font-size:1.7em; font-weight:700; color:var(--accent); }
+  .kpi-card .lbl { font-size:.8em; color:var(--muted); margin-top:4px; }
+  .kpi-card.good .val { color:var(--green); }
+  .kpi-card.bad .val { color:var(--red); }
+  footer { text-align:center; padding:24px; color:var(--muted); font-size:.82em;
+           border-top:1px solid var(--border); margin-top:36px; }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <h1>Learning the Dwell-Time Profile</h1>
+  <div class="sub">Cross-Validated Optimal &mu; Across 96 Timeframes on Tuesdays</div>
+  <div class="meta">
+    <span>4 Tuesdays: Sep 4, 11, 18, 25</span>
+    <span>Leave-One-Out CV (4 folds)</span>
+    <span>d=0.96, &gamma;=0.20</span>
+    <span>15 &mu; values tested per slot</span>
+    <span>GPU-accelerated</span>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- ================================================================ -->
+<section>
+  <h2>1. What We Did and Why</h2>
+
+  <div class="card highlight">
+    <h3>The Reverse Question</h3>
+    <p>In the crash and game-day analyses, we <em>knew</em> which event happened and <em>tuned &mu;</em>
+    on specific links to match reality. Now we ask the opposite: <strong>what does the data itself
+    tell us the optimal &mu; should be?</strong></p>
+    <p>If the model is well-calibrated, the optimal &mu; should stay near 20 (the default) on a
+    normal day with no anomalies. Deviations from 20 would signal that the model needs adjustment
+    &mdash; potentially indicating a recurring traffic pattern or an anomaly.</p>
+  </div>
+
+  <h3>Why Tuesdays?</h3>
+  <p>We chose Tuesdays because they are the <strong>cleanest day</strong> in our dataset &mdash;
+  no known major events, holidays, or documented disruptions on any of the 4 Tuesdays
+  (Sep 4, 11, 18, 25). This gives us a <strong>baseline &mu; profile</strong> for a normal day.</p>
+
+  <h3>Cross-Validation Design</h3>
+  <p>Leave-one-out across 4 Tuesdays. For each fold:</p>
+  <ol>
+    <li><strong>Training input:</strong> Average E<sub>N</sub> from the other 3 Tuesdays at each time slot</li>
+    <li><strong>Truth:</strong> PageRank(M<sub>&mu;=20</sub>, E<sub>N</sub>(test Tuesday)) &mdash; what the model
+    produces given the real data</li>
+    <li><strong>Prediction:</strong> PageRank(M<sub>&mu;</sub>, E<sub>avg_train</sub>) for each &mu; in
+    [0.01, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 15, 20, 25, 30, 40, 50]</li>
+    <li><strong>Select:</strong> the &mu; minimizing Overall MRE against the truth</li>
+  </ol>
+  <p>This produces <strong>4 &mu; profiles</strong> (one per fold), which we aggregate via median
+  and mean to get a robust estimate.</p>
+</section>
+
+<!-- ================================================================ -->
+<section>
+  <h2>2. The Key Finding: &mu; = 20 Is Already Optimal</h2>
+
+  <div class="kpi">
+    <div class="kpi-card">
+      <div class="val">10 &ndash; 20</div>
+      <div class="lbl">Optimal &mu; range (all 96 slots)</div>
+    </div>
+    <div class="kpi-card">
+      <div class="val">40 / 96</div>
+      <div class="lbl">Slots where &mu; &ne; 20</div>
+    </div>
+    <div class="kpi-card">
+      <div class="val">+1.0%</div>
+      <div class="lbl">Overall improvement</div>
+    </div>
+    <div class="kpi-card good">
+      <div class="val">r = 0.9999</div>
+      <div class="lbl">GT gap vs Model error correlation</div>
+    </div>
+  </div>
+
+  <div class="card success">
+    <p>On normal Tuesdays, the optimal &mu; stays between <strong>10 and 20</strong> across all
+    96 time slots. Optimizing &mu; per-slot yields only <strong>1% improvement</strong> over
+    the fixed &mu;=20 default. This confirms that <strong>&mu;=20 is well-calibrated for
+    normal traffic</strong> &mdash; the model doesn't need temporal adjustment on clean days.</p>
+    <p>This is important because it establishes the <strong>baseline</strong>: when we see
+    &mu; deviating significantly from 20 on another day (like the I-15 crash day or the
+    football game), we know it signals an actual disruption, not a model artifact.</p>
+  </div>
+</section>
+
+<!-- ================================================================ -->
+<section>
+  <h2>3. The Ground Truth Tells the Same Story</h2>
+
+  <div class="card highlight">
+    <h3>The Critical Insight</h3>
+    <p>The model's prediction error at &mu;=20 is <strong>almost entirely explained</strong> by
+    the natural variation between Tuesdays' ground truth data. When one Tuesday's E<sub>N</sub>
+    differs more from the average of the other three, the model error increases proportionally.
+    The correlation between ground truth gap and model error is <strong>r = 0.9999</strong>.</p>
+  </div>
+
+  <h3>Ground Truth Gaps (Raw E<sub>N</sub> Comparison)</h3>
+  <table>
+    <tr><th>Fold</th><th>Test Tuesday</th><th>Overall Gap</th><th>Top-100 Gap</th></tr>
+    <tr><td>1</td><td>Sep 4</td><td>0.2588</td><td>0.7619</td></tr>
+    <tr><td>2</td><td>Sep 11</td><td>0.2633</td><td>0.7673</td></tr>
+    <tr><td>3</td><td>Sep 18</td><td>0.2740</td><td>0.7740</td></tr>
+    <tr><td>4</td><td>Sep 25</td><td>0.2588</td><td>0.7778</td></tr>
+    <tr style="font-weight:bold;"><td colspan="2">Average</td><td>0.2638</td><td>0.7703</td></tr>
+  </table>
+
+  <h3>Model Error at &mu;=20 (Same Folds)</h3>
+  <table>
+    <tr><th>Fold</th><th>Test Tuesday</th><th>Model Error</th><th>GT Gap</th><th>Ratio</th></tr>
+    <tr><td>1</td><td>Sep 4</td><td>0.2498</td><td>0.2588</td><td>0.965</td></tr>
+    <tr><td>2</td><td>Sep 11</td><td>0.2543</td><td>0.2633</td><td>0.966</td></tr>
+    <tr><td>3</td><td>Sep 18</td><td>0.2647</td><td>0.2740</td><td>0.966</td></tr>
+    <tr><td>4</td><td>Sep 25</td><td>0.2502</td><td>0.2588</td><td>0.967</td></tr>
+    <tr style="font-weight:bold;"><td colspan="2">Average</td><td>0.2548</td><td>0.2638</td><td>0.966</td></tr>
+  </table>
+
+  <div class="card">
+    <p><strong>The model error is consistently 96.6% of the ground truth gap.</strong> The
+    remaining 3.4% is the &ldquo;model smoothing&rdquo; effect &mdash; PageRank slightly reduces
+    the raw input differences through the network topology. But the dominant factor is the
+    input data variation, not the model parameters.</p>
+  </div>
+
+  <h3>Pairwise Tuesday Gaps</h3>
+  <table>
+    <tr><th></th><th>Sep 4</th><th>Sep 11</th><th>Sep 18</th><th>Sep 25</th></tr>
+    <tr><td><strong>Sep 4</strong></td><td>&mdash;</td><td>0.264</td><td>0.279</td><td>0.260</td></tr>
+    <tr><td><strong>Sep 11</strong></td><td></td><td>&mdash;</td><td>0.295</td><td>0.276</td></tr>
+    <tr><td><strong>Sep 18</strong></td><td></td><td></td><td>&mdash;</td><td>0.286</td></tr>
+    <tr><td><strong>Sep 25</strong></td><td></td><td></td><td></td><td>&mdash;</td></tr>
+  </table>
+  <p>Sep 18 has the largest gaps with other Tuesdays (0.279&ndash;0.295), which explains why
+  Fold 3 (test=Sep 18) had the most slots with &mu; &ne; 20 (14 slots). This isn't an event &mdash;
+  it's natural week-to-week variation in GPS-sparse traffic data.</p>
+</section>
+
+<!-- ================================================================ -->
+<section>
+  <h2>4. Figures</h2>
+
+  <div class="figure">
+    <div class="ftitle">Figure 1: Ground Truth Gap vs Model Error &mdash; The Same Pattern</div>
+    <img src="fig_mu_gt_analysis.png" alt="GT gap vs model error analysis">
+    <div class="cap">
+      <strong>(A)</strong> Time-of-day overlay: the red line (ground truth gap between test and
+      training E<sub>N</sub>) and the blue dashed line (model error at &mu;=20) follow nearly
+      identical patterns. When the input data differs more, the model error increases proportionally.
+      <br><br>
+      <strong>(B)</strong> Scatter plot of all 384 points (4 folds &times; 96 slots). The
+      Pearson correlation is <strong>r = 0.9999</strong> &mdash; the model error is almost entirely
+      determined by the input data gap, not by the model parameters.
+      <br><br>
+      <strong>(C)</strong> Per-fold ground truth gaps. All 4 Tuesdays show similar patterns,
+      with higher variation during daytime (more traffic = more GPS data = more meaningful differences).
+      <br><br>
+      <strong>(D)</strong> Optimal &mu; (blue) overlaid with ground truth gap (red). The &mu; stays
+      near 20 regardless of how large the GT gap is, confirming the model is stable.
+    </div>
+  </div>
+
+  <div class="figure">
+    <div class="ftitle">Figure 2: Three Layers &mdash; Ground Truth Floor, Model Error, Optimized Error</div>
+    <img src="fig_mu_three_layers.png" alt="Three layers comparison">
+    <div class="cap">
+      <strong>Red shaded area:</strong> the ground truth gap (raw E<sub>N</sub> difference between
+      the test Tuesday and the training average) &mdash; this is the <em>floor</em> that no model
+      can beat because it represents the inherent difference in the input data.
+      <strong>Red line:</strong> model error at &mu;=20.
+      <strong>Green line:</strong> model error at optimal &mu; per slot.
+      <br><br>
+      The three lines nearly overlap: the model error tracks the ground truth floor, and
+      optimizing &mu; provides negligible additional improvement. <strong>The error is in the
+      data, not the model.</strong>
+    </div>
+  </div>
+
+  <div class="figure">
+    <div class="ftitle">Figure 3: Learned &mu; Profile with Cross-Validation Bands</div>
+    <img src="fig_mu_profile_tuesday.png" alt="Mu profile">
+    <div class="cap">
+      <strong>(A)</strong> Median &mu; across 4 folds with &plusmn;1 std shading. The profile
+      stays between 10 and 20 all day, with slight dips to 10&ndash;15 during some daytime slots.
+      <br><br>
+      <strong>(B)</strong> Individual fold profiles. All 4 folds agree on the general pattern:
+      &mu; near 20, with minor variations.
+      <br><br>
+      <strong>(C)</strong> MRE comparison: fixed &mu;=20 (red) vs optimal &mu; (green). The
+      improvement is barely visible &mdash; the lines nearly overlap.
+    </div>
+  </div>
+
+  <div class="figure">
+    <div class="ftitle">Figure 4: &mu; Heatmap Across Folds</div>
+    <img src="fig_mu_heatmap_tuesday.png" alt="Mu heatmap">
+    <div class="cap">
+      Each row is a CV fold (test Tuesday). Colors represent the optimal &mu; on a log scale.
+      The heatmap is predominantly blue/green (&mu;=10&ndash;20), confirming consistency across
+      folds. Darker patches (lower &mu;) appear at similar time slots across folds, suggesting
+      mild systematic patterns rather than random noise.
+    </div>
+  </div>
+
+  <div class="figure">
+    <div class="ftitle">Figure 5: Hourly Improvement from &mu; Optimization</div>
+    <img src="fig_mu_improvement_tuesday.png" alt="Hourly improvement">
+    <div class="cap">
+      MRE improvement per hour from using optimal &mu; instead of fixed &mu;=20. Most hours show
+      0&ndash;2% improvement. The largest improvements (if any) occur during daytime hours when
+      traffic volume is highest. Overall average: +1.0%.
+    </div>
+  </div>
+</section>
+
+<!-- ================================================================ -->
+<section>
+  <h2>5. What This Means</h2>
+
+  <div class="card success">
+    <h3>For the Model</h3>
+    <ul>
+      <li><strong>&mu;=20 is well-calibrated:</strong> On normal days, the optimal &mu; stays
+      near the default. No temporal tuning needed.</li>
+      <li><strong>The model is stable:</strong> Even when the ground truth gap is large (0.3+
+      during some daytime slots), the model doesn't benefit from &mu; adjustment. The error
+      comes from data variation, not model miscalibration.</li>
+      <li><strong>The 0.9999 correlation</strong> means the PageRank model is a near-transparent
+      transformation: the output error mirrors the input gap almost exactly. The model adds
+      very little distortion.</li>
+    </ul>
+  </div>
+
+  <div class="card highlight">
+    <h3>For Anomaly Detection</h3>
+    <p>This baseline establishes a clear reference:</p>
+    <ul>
+      <li>On a <strong>normal day</strong>: optimal &mu; &asymp; 10&ndash;20 everywhere, with &lt;1%
+      improvement from optimization</li>
+      <li>On a <strong>crash day</strong> (Sep 20): optimal &mu; drops to 0.01 on crash links,
+      with 93% improvement at peak disruption</li>
+      <li>On a <strong>game day</strong> (Sep 15): optimal &mu; drops to 0.01&ndash;0.10 near the
+      stadium, with 94&ndash;98% improvement during closures</li>
+    </ul>
+    <p>The <strong>magnitude of &mu; deviation from 20</strong> is directly proportional to the
+    severity of the disruption. This could be used as an anomaly score: scan all links,
+    find those where &mu; needs to deviate from 20 to match observations, and flag them.</p>
+  </div>
+
+  <div class="card">
+    <h3>For the Ground Truth</h3>
+    <p>The analysis reveals that the <strong>week-to-week variation in the smoothed GPS data</strong>
+    is substantial (Overall MRE ~0.25 between any two Tuesdays). This is the fundamental noise
+    floor of the GPS-based traffic data:</p>
+    <ul>
+      <li>Only ~2% of links have GPS observations in a given 15-minute window</li>
+      <li>The smoothing (&gamma;=0.26) helps but doesn't eliminate variance</li>
+      <li>Two &ldquo;identical&rdquo; Tuesdays have 0.26 MRE between their E<sub>N</sub> vectors</li>
+      <li>No model &mdash; regardless of parameters &mdash; can reduce this input-level noise</li>
+    </ul>
+    <p>This explains why the crash prediction experiment had high errors on some frames:
+    the week-to-week gap (Sep 13 vs Sep 20) was already 0.35+, and the crash signal was
+    embedded within that noise.</p>
+  </div>
+</section>
+
+<!-- ================================================================ -->
+<section>
+  <h2>6. Comparison: Normal Day vs Event Days</h2>
+
+  <table>
+    <tr><th>Scenario</th><th>Optimal &mu;</th><th>Improvement</th><th>Interpretation</th></tr>
+    <tr><td>Normal Tuesday</td><td>10 &ndash; 20</td><td>+1.0%</td><td>Model well-calibrated; data variation dominates</td></tr>
+    <tr style="background:#fef2f2;"><td>I-15 Crash (08:30)</td><td><strong>0.01</strong></td><td class="pos"><strong>+93.6%</strong></td><td>Crash empties corridor; &mu; must drop to release mass</td></tr>
+    <tr style="background:#fef2f2;"><td>Football game (17:00)</td><td><strong>0.01</strong></td><td class="pos"><strong>+97.4%</strong></td><td>Road closures reduce stadium-area traffic</td></tr>
+    <tr style="background:#fef2f2;"><td>Football game (18:00)</td><td><strong>0.10</strong></td><td class="pos"><strong>+98.4%</strong></td><td>Pre-kickoff restricted access</td></tr>
+    <tr><td>Football game (19:00)</td><td>20</td><td>0%</td><td>Arrival surge &mdash; mass increases, not decreases</td></tr>
+  </table>
+
+  <div class="card">
+    <p><strong>The pattern is clear:</strong> &mu; = 20 on normal days, &mu; &laquo; 20 during disruptions
+    that reduce corridor traffic, and &mu; = 20 (or higher) during surges. The deviation of &mu; from
+    its normal value is the <strong>anomaly signature</strong>.</p>
+  </div>
+</section>
+
+</div>
+
+<footer>
+  Tuesday &mu; Profile Report &mdash; Two-Phase PageRank with Demand-Weighted Transitions
+  &mdash; Salt Lake City (N=99,716) &mdash; April 2026
+</footer>
+</body>
+</html>
