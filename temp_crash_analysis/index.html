@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Two-Phase PageRank — Experiment Reports</title>
+<style>
+  :root { --accent:#1565C0; --accent-light:#e3f2fd; --red:#c62828; --green:#2e7d32;
+          --bg:#fafafa; --card:#fff; --text:#212121; --muted:#757575; --border:#e0e0e0; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Segoe UI','Helvetica Neue',Arial,sans-serif;
+         background:var(--bg); color:var(--text); line-height:1.75; }
+  .hero { background:linear-gradient(135deg,#0d47a1 0%,#1565c0 40%,#1976d2 70%,#42a5f5 100%);
+          color:#fff; padding:60px 40px 50px; text-align:center; }
+  .hero h1 { font-size:2.4em; margin-bottom:12px; font-weight:700; }
+  .hero .sub { font-size:1.15em; opacity:.9; margin-bottom:16px; max-width:800px;
+               margin-left:auto; margin-right:auto; }
+  .hero .meta { display:inline-flex; gap:24px; flex-wrap:wrap; justify-content:center;
+                font-size:.9em; opacity:.8; margin-top:8px; }
+  .container { max-width:1000px; margin:0 auto; padding:40px 30px; }
+  h2 { font-size:1.5em; color:var(--accent); margin:40px 0 16px;
+       padding-bottom:7px; border-bottom:3px solid var(--accent); }
+  h2:first-of-type { margin-top:0; }
+  p { margin-bottom:13px; }
+
+  .report-card {
+    background:var(--card); border:1px solid var(--border); border-radius:12px;
+    padding:0; margin-bottom:24px; overflow:hidden;
+    box-shadow:0 2px 10px rgba(0,0,0,.05);
+    transition: box-shadow 0.2s, transform 0.2s;
+  }
+  .report-card:hover {
+    box-shadow:0 6px 24px rgba(0,0,0,.1);
+    transform: translateY(-2px);
+  }
+  .report-card .badge {
+    display:inline-block; font-size:.72em; font-weight:700; padding:3px 10px;
+    border-radius:20px; margin-right:8px; vertical-align:middle;
+  }
+  .badge-detection { background:#e3f2fd; color:#1565c0; }
+  .badge-optimization { background:#e8f5e9; color:#2e7d32; }
+  .badge-prediction { background:#fce4ec; color:#c62828; }
+  .badge-validation { background:#fff3e0; color:#e65100; }
+  .badge-analysis { background:#f3e5f5; color:#7b1fa2; }
+
+  .report-card .header {
+    padding:20px 24px 14px; border-bottom:1px solid var(--border);
+  }
+  .report-card .header h3 {
+    font-size:1.2em; margin:0 0 6px; color:var(--text);
+  }
+  .report-card .header h3 a {
+    color:var(--accent); text-decoration:none;
+  }
+  .report-card .header h3 a:hover { text-decoration:underline; }
+  .report-card .header .date { font-size:.82em; color:var(--muted); }
+
+  .report-card .body {
+    padding:16px 24px 20px;
+  }
+  .report-card .body p { font-size:.92em; margin-bottom:10px; }
+  .report-card .body .highlights {
+    display:flex; gap:16px; flex-wrap:wrap; margin-top:10px;
+  }
+  .report-card .body .hl {
+    background:#f5f5f5; border-radius:8px; padding:10px 14px;
+    font-size:.85em; flex:1; min-width:160px;
+  }
+  .report-card .body .hl .num { font-size:1.4em; font-weight:700; color:var(--accent); }
+  .report-card .body .hl .lbl { font-size:.78em; color:var(--muted); }
+  .report-card .body .hl.good .num { color:var(--green); }
+  .report-card .body .hl.bad .num { color:var(--red); }
+
+  .arrow-link {
+    display:inline-block; padding:8px 20px; background:var(--accent); color:#fff;
+    border-radius:6px; text-decoration:none; font-size:.9em; font-weight:600;
+    margin-top:8px; transition: background 0.2s;
+  }
+  .arrow-link:hover { background:#0d47a1; }
+
+  .flow { display:flex; align-items:center; gap:0; margin:24px 0; flex-wrap:wrap; justify-content:center; }
+  .flow .step { background:var(--accent); color:#fff; padding:12px 18px; border-radius:8px;
+                font-size:.88em; font-weight:600; text-align:center; min-width:120px; }
+  .flow .arr { font-size:1.5em; color:var(--accent); padding:0 8px; }
+
+  footer { text-align:center; padding:28px; color:var(--muted); font-size:.82em;
+           border-top:1px solid var(--border); margin-top:40px; }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <h1>Two-Phase PageRank: Experiment Reports</h1>
+  <div class="sub">
+    A collection of analyses validating and extending the Two-Phase PageRank model for
+    traffic flow estimation on the Salt Lake City road network (99,716 links).
+  </div>
+  <div class="meta">
+    <span>Dataset: Aug 31 &ndash; Sep 30, 2018</span>
+    <span>Model: d=0.96, &gamma;=0.20, &mu;=20</span>
+    <span>GPU: RTX 4070 (CuPy)</span>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- ── Overview ── -->
+<h2>Research Flow</h2>
+<p>These reports follow a logical progression. Each experiment builds on the previous one:</p>
+
+<div class="flow">
+  <div class="step">1. Crash<br>Detection</div>
+  <div class="arr">&rarr;</div>
+  <div class="step">2. Damping<br>Optimization</div>
+  <div class="arr">&rarr;</div>
+  <div class="step">3. Demand-Weighted<br>Crash Detection</div>
+  <div class="arr">&rarr;</div>
+  <div class="step">4. &mu;-Control<br>Prediction</div>
+  <div class="arr">&rarr;</div>
+  <div class="step">5. Game Day<br>Analysis</div>
+  <div class="arr">&rarr;</div>
+  <div class="step">6. Learned &mu;<br>Profile</div>
+</div>
+
+<!-- ── Report 1 ── -->
+<h2>Reports</h2>
+
+<div class="report-card">
+  <div class="header">
+    <h3>
+      <span class="badge badge-detection">DETECTION</span>
+      <a href="crash_report.html">1. I-15 Crash Anomaly Detection</a>
+    </h3>
+    <div class="date">September 20, 2018 &mdash; I-15 SB at 14400 South, Draper</div>
+  </div>
+  <div class="body">
+    <p>The original analysis. A multi-vehicle crash blocked I-15 SB for 3.5 hours during
+    morning rush. Using the standard model (d=0.80, &gamma;=0), we compared crash day PageRank
+    distributions against 3 baseline Thursdays. Includes interactive network map, smoothed
+    traffic timeseries, raw GPS counts, PageRank snapshots, and deviation analysis.</p>
+    <p>Also includes the first <strong>conditional experiment</strong> (Tab 2) which attempted to
+    predict crash-day traffic by modifying the transition matrix &mdash; this failed due to
+    self-loop dominance, motivating the later breakthroughs.</p>
+    <div class="highlights">
+      <div class="hl bad"><div class="num">&minus;18.9%</div><div class="lbl">I-15 SB at 08:30</div></div>
+      <div class="hl bad"><div class="num">&minus;92.7%</div><div class="lbl">I-15 NB at 08:30</div></div>
+      <div class="hl good"><div class="num">+291.4%</div><div class="lbl">SB rebound at 10:30</div></div>
+    </div>
+    <a href="crash_report.html" class="arrow-link">Open Report &rarr;</a>
+  </div>
+</div>
+
+<!-- ── Report 2 ── -->
+<div class="report-card">
+  <div class="header">
+    <h3>
+      <span class="badge badge-optimization">OPTIMIZATION</span>
+      <a href="damping_optimization_report.html">2. Damping Factor Optimization</a>
+    </h3>
+    <div class="date">Target: d &gt; 0.90, Overall MRE &le; 0.05</div>
+  </div>
+  <div class="body">
+    <p>The central model improvement. We wanted to reduce the model's dependence on ground-truth
+    GPS data (the teleportation vector) by increasing the damping factor above 0.90. A 576-combination
+    parameter grid search <strong>failed entirely</strong> &mdash; no existing parameter could solve this.</p>
+    <p>The breakthrough: <strong>demand-weighted transitions</strong>. By adding a single parameter
+    &gamma; that weights transitions by average link popularity, the matrix learns structural traffic
+    demand. With &gamma;=0.20, d=0.96: the model uses only 4% ground truth but achieves
+    <strong>better accuracy</strong> than the original at d=0.80 with 20%.</p>
+    <p>Validated with 3 independent train/test splits (temporal, day-of-week, 5-fold CV).</p>
+    <div class="highlights">
+      <div class="hl"><div class="num">576</div><div class="lbl">Grid combos (failed)</div></div>
+      <div class="hl good"><div class="num">0.0385</div><div class="lbl">Overall MRE at d=0.96</div></div>
+      <div class="hl good"><div class="num">3.3&times;</div><div class="lbl">Less ground truth needed</div></div>
+    </div>
+    <a href="damping_optimization_report.html" class="arrow-link">Open Report &rarr;</a>
+  </div>
+</div>
+
+<!-- ── Report 3 ── -->
+<div class="report-card">
+  <div class="header">
+    <h3>
+      <span class="badge badge-detection">DETECTION</span>
+      <a href="crash_demand_weighted_report.html">3. Crash Detection with Demand-Weighted Model</a>
+    </h3>
+    <div class="date">Same I-15 crash, now with d=0.96, &gamma;=0.20</div>
+  </div>
+  <div class="body">
+    <p>Repeats the I-15 crash detection using the new demand-weighted model. Compares three
+    configurations: original (d=0.80), demand d=0.94, and demand d=0.96. The crash signature
+    (&minus;18.9% SB, +291% rebound) is <strong>virtually identical</strong> across all three,
+    confirming the demand-weighted model detects anomalies just as well with only 4% ground truth.</p>
+    <div class="highlights">
+      <div class="hl bad"><div class="num">&minus;18.9%</div><div class="lbl">SB at 08:30 (all 3 models)</div></div>
+      <div class="hl good"><div class="num">+292.4%</div><div class="lbl">SB rebound (d=0.96)</div></div>
+      <div class="hl"><div class="num">0.66s</div><div class="lbl">28 PR runs on GPU</div></div>
+    </div>
+    <a href="crash_demand_weighted_report.html" class="arrow-link">Open Report &rarr;</a>
+  </div>
+</div>
+
+<!-- ── Report 4 ── -->
+<div class="report-card">
+  <div class="header">
+    <h3>
+      <span class="badge badge-prediction">PREDICTION</span>
+      <a href="crash_mu_analysis_report.html">4. Crash Prediction via Per-Link &mu; Control</a>
+    </h3>
+    <div class="date">Predicting crash-day traffic without crash-day data</div>
+  </div>
+  <div class="body">
+    <p>The most technically detailed report. Documents the full journey from failed speed/lane/adjacency
+    modifications to the discovery that <strong>&mu; (dwell-time)</strong> is the only effective
+    control parameter for local disruption modeling.</p>
+    <p>At &mu;=20, the self-loop retains 99.5% of mass &mdash; no other parameter can overcome
+    this. Reducing &mu; to 0.01 on the 21 I-15 SB links drops the 08:30 crash-corridor error from
+    <strong>179% to 11.5%</strong>, using only last week's data as input.</p>
+    <p>Includes per-frame analysis, two-population breakdown (diversion vs rebound), physics
+    explanation, and honest limitations section.</p>
+    <div class="highlights">
+      <div class="hl bad"><div class="num">179%</div><div class="lbl">Error at &mu;=20 (08:30)</div></div>
+      <div class="hl good"><div class="num">11.5%</div><div class="lbl">Error at &mu;=0.01</div></div>
+      <div class="hl good"><div class="num">93.6%</div><div class="lbl">Error reduction</div></div>
+    </div>
+    <a href="crash_mu_analysis_report.html" class="arrow-link">Open Report &rarr;</a>
+  </div>
+</div>
+
+<!-- ── Report 5 ── -->
+<div class="report-card">
+  <div class="header">
+    <h3>
+      <span class="badge badge-analysis">ANALYSIS</span>
+      <a href="gameday_analysis_report.html">5. Game Day Analysis: Utah vs #10 Washington</a>
+    </h3>
+    <div class="date">September 15, 2018 &mdash; Rice-Eccles Stadium, 47,445 attendance</div>
+  </div>
+  <div class="body">
+    <p>A completely different type of event: a planned football game with documented road closures
+    (500 South lane reduction, Guardsman Way full closure). Validates the model on a <strong>non-crash
+    disruption</strong> with known spatial and temporal structure.</p>
+    <p>The model detects the full game-day cycle: pre-event closures (&minus;85.9% on 500 South),
+    arrival surge (+463.4%), and post-game departure (+247.9%). The &mu;-control prediction achieves
+    94&ndash;98% error reduction during closure phases.</p>
+    <p>Includes interactive map of 2,545 links near the stadium with hover tooltips.</p>
+    <div class="highlights">
+      <div class="hl good"><div class="num">+463%</div><div class="lbl">500 South at 19:00</div></div>
+      <div class="hl good"><div class="num">98.4%</div><div class="lbl">Error reduction (18:00)</div></div>
+      <div class="hl"><div class="num">63.7s</div><div class="lbl">Total GPU time</div></div>
+    </div>
+    <a href="gameday_analysis_report.html" class="arrow-link">Open Report &rarr;</a>
+  </div>
+</div>
+
+<!-- ── Report 6 ── -->
+<div class="report-card">
+  <div class="header">
+    <h3>
+      <span class="badge badge-validation">VALIDATION</span>
+      <a href="mu_profile_report.html">6. Learning the &mu; Profile: Cross-Validated Baseline</a>
+    </h3>
+    <div class="date">4 Tuesdays, 96 timeframes, leave-one-out CV</div>
+  </div>
+  <div class="body">
+    <p>The reverse experiment: instead of knowing an event and tuning &mu;, we ask what &mu; the
+    data itself suggests. On normal Tuesdays (no events), the optimal &mu; stays between 10 and 20
+    across all 96 time slots, with only <strong>1% improvement</strong> over fixed &mu;=20.</p>
+    <p>The key discovery: prediction error correlates <strong>r = 0.9999</strong> with the raw
+    ground truth gap between Tuesdays. The model is 96.6% transparent &mdash; it adds less than
+    4% distortion to the input data. The error is in the week-to-week GPS variation, not the model.</p>
+    <p>This establishes the <strong>baseline</strong>: &mu; &asymp; 20 on normal days, so any
+    deviation signals a real disruption.</p>
+    <div class="highlights">
+      <div class="hl"><div class="num">10 &ndash; 20</div><div class="lbl">Optimal &mu; range (normal day)</div></div>
+      <div class="hl good"><div class="num">r = 0.9999</div><div class="lbl">GT gap vs model error</div></div>
+      <div class="hl"><div class="num">96.6%</div><div class="lbl">Model transparency</div></div>
+    </div>
+    <a href="mu_profile_report.html" class="arrow-link">Open Report &rarr;</a>
+  </div>
+</div>
+
+<!-- ── Summary ── -->
+<h2>Key Parameters</h2>
+<p>Three parameters control the model's behavior:</p>
+<table style="width:100%; border-collapse:collapse; margin:14px 0; font-size:.92em;">
+  <tr style="background:var(--accent); color:#fff;">
+    <th style="padding:10px 14px;">Parameter</th><th style="padding:10px 14px;">Symbol</th>
+    <th style="padding:10px 14px;">Default</th><th style="padding:10px 14px;">Role</th></tr>
+  <tr><td style="padding:8px 14px; border-bottom:1px solid var(--border);"><strong>Damping factor</strong></td>
+      <td style="padding:8px 14px; border-bottom:1px solid var(--border);">d</td>
+      <td style="padding:8px 14px; border-bottom:1px solid var(--border);">0.96</td>
+      <td style="padding:8px 14px; border-bottom:1px solid var(--border);">96% matrix, 4% ground truth. Controls global accuracy vs data dependence.</td></tr>
+  <tr style="background:#f5f5f5;"><td style="padding:8px 14px; border-bottom:1px solid var(--border);"><strong>Demand sensitivity</strong></td>
+      <td style="padding:8px 14px; border-bottom:1px solid var(--border);">&gamma;</td>
+      <td style="padding:8px 14px; border-bottom:1px solid var(--border);">0.20</td>
+      <td style="padding:8px 14px; border-bottom:1px solid var(--border);">Weights transitions by average link popularity. Enables high d with low MRE.</td></tr>
+  <tr><td style="padding:8px 14px; border-bottom:1px solid var(--border);"><strong>Dwell-time scale</strong></td>
+      <td style="padding:8px 14px; border-bottom:1px solid var(--border);">&mu;</td>
+      <td style="padding:8px 14px; border-bottom:1px solid var(--border);">20 (global), 0.01 (disrupted links)</td>
+      <td style="padding:8px 14px; border-bottom:1px solid var(--border);">Controls mass retention per link. The only effective knob for local disruption modeling.</td></tr>
+</table>
+
+<h2>Supporting Files</h2>
+<table style="width:100%; border-collapse:collapse; margin:14px 0; font-size:.88em;">
+  <tr style="background:var(--accent); color:#fff;">
+    <th style="padding:8px 12px;">File</th><th style="padding:8px 12px;">Description</th></tr>
+  <tr><td style="padding:6px 12px; border-bottom:1px solid var(--border);"><a href="slc_traffic_events_aug_sep_2018.md">slc_traffic_events_aug_sep_2018.md</a></td>
+      <td style="padding:6px 12px; border-bottom:1px solid var(--border);">18 documented traffic events with sources (622 lines)</td></tr>
+  <tr style="background:#f5f5f5;"><td style="padding:6px 12px; border-bottom:1px solid var(--border);"><a href="damping_optimization_log.md">damping_optimization_log.md</a></td>
+      <td style="padding:6px 12px; border-bottom:1px solid var(--border);">Full research log of the damping optimization process (396 lines)</td></tr>
+  <tr><td style="padding:6px 12px; border-bottom:1px solid var(--border);">*.json</td>
+      <td style="padding:6px 12px; border-bottom:1px solid var(--border);">Raw results for each experiment (machine-readable)</td></tr>
+  <tr style="background:#f5f5f5;"><td style="padding:6px 12px; border-bottom:1px solid var(--border);">*.py</td>
+      <td style="padding:6px 12px; border-bottom:1px solid var(--border);">Analysis scripts (GPU-accelerated, CPU fallback)</td></tr>
+</table>
+
+</div>
+
+<footer>
+  Two-Phase PageRank Experiment Reports &mdash; Salt Lake City Road Network (N = 99,716)
+  &mdash; April 2026
+</footer>
+</body>
+</html>
