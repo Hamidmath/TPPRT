@@ -125,6 +125,20 @@ We determine $\gamma$ via split-half cross-validation (49~random timeframes, see
 The optimal $\gamma = 0.26$ minimises both metrics simultaneously, retaining 69\% of the original variance.
 After smoothing, the matrix becomes $2{,}880 \times 99{,}716$ with 100\% density---every link has a positive probability estimate.
 
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\linewidth]{fig6_smoothing_tradeoff.png}
+\caption{Cross-validation of smoothing parameter $\gamma$. The optimal $\gamma = 0.26$ minimises both predictive MSE and downstream PageRank MRE.}
+\label{fig:smoothing}
+\end{figure}
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\linewidth]{fig11_sparsity_histogram.png}
+\caption{Distribution of link coverage per 15-minute window. Only 1--3\% of the 99,716 links have GPS observations in any given time slot.}
+\label{fig:sparsity}
+\end{figure}
+
 
 % ================================================================
 \section{Two-Phase PageRank Model}
@@ -161,6 +175,20 @@ sw = 20 \times 500/25 = 400, \quad P[i,i] = \frac{400}{400+3} = 99.3\%
 \]
 After $k$ iterations, the retained mass is $P[i,i]^k$.
 This naturally allocates more PageRank mass to links with longer traversal times---which are precisely the high-volume corridors that carry the most traffic.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\linewidth]{fig1_selfloop_prob.png}
+\caption{Self-loop probability as a function of link traversal time for different $\mu$ values. Higher $\mu$ increases mass retention, with the effect most pronounced on long, slow links.}
+\label{fig:selfloop}
+\end{figure}
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\linewidth]{fig2_mass_retention.png}
+\caption{Probability mass retention over power iteration steps for three link types at $\mu = 20$. Highway links retain mass much longer than short connectors.}
+\label{fig:retention}
+\end{figure}
 
 \subsection{Two-Phase Block Structure}
 
@@ -281,6 +309,20 @@ Rank overlap /100 & $94.4 \pm 4.5$ & 86--99 \\
 
 Table~\ref{tab:main_results} shows the model achieves Top-100~MRE of 3.1\%, Pearson correlation 0.997, and correctly identifies 94 out of 100 busiest links on average.
 
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\linewidth]{fig4_mre_vs_mu.png}
+\caption{Top-100 and Overall MRE as a function of $\mu$. Both metrics improve monotonically, with diminishing returns beyond $\mu = 20$.}
+\label{fig:mre_mu}
+\end{figure}
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\linewidth]{fig3_mre_heatmap.png}
+\caption{Top-100 MRE heatmap over $\mu$ and $\beta$ parameter space. The optimal region ($\mu = 20$, $\beta = 0.9$) is clearly delineated.}
+\label{fig:heatmap}
+\end{figure}
+
 \subsection{Effect of Damping Factor}
 
 \begin{table}[t]
@@ -303,6 +345,20 @@ $d$ & Top-100 MRE & Overall MRE & Pearson $r$ \\
 
 Without demand weighting ($\gamma = 0$), MRE increases monotonically with $d$ (Table~\ref{tab:damping}).
 With $\gamma = 0.20$, the model achieves Overall~MRE~$= 0.0383$ at $d = 0.96$ (Table~\ref{tab:demand_validation})---a 5$\times$ reduction in ground-truth dependence with improved accuracy.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\linewidth]{fig_damping_final.png}
+\caption{Damping factor optimisation. \textbf{(A)}~Baseline sweep without demand weighting: MRE rises with $d$. \textbf{(B)}~With demand weighting ($\gamma$): MRE drops below 0.05 even at $d = 0.96$. \textbf{(C)}~Direct comparison of configurations.}
+\label{fig:damping}
+\end{figure}
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\linewidth]{fig_validation.png}
+\caption{Demand-weighted model validated across three independent train/test splits: temporal (Sept~1--15 vs 16--30), day-of-week (MWF vs TThSSu), and 5-fold random CV.}
+\label{fig:validation}
+\end{figure}
 
 
 % ================================================================
@@ -339,6 +395,13 @@ The model captures the complete crash lifecycle (Table~\ref{tab:crash}):
 pre-crash calibration ($+1.7\%$, confirming fair comparison), peak disruption ($-18.9\%$~SB, $-92.7\%$~NB from rubbernecking), clearance rebound ($+291.4\%$~SB as pent-up traffic releases), and recovery ($+36.7\%$).
 The demand-weighted model ($d = 0.96$, $\gamma = 0.20$) produces virtually identical deviations ($-18.9\%$, $+292.4\%$), confirming crash detection with only 4\% ground truth.
 
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\linewidth]{fig5_combined_panel.png}
+\caption{I-15 crash analysis four-panel summary. \textbf{(A)}~Smoothed SB traffic. \textbf{(B)}~Raw GPS counts. \textbf{(C)}~PageRank deviation from baseline. \textbf{(D)}~Surface street diversion.}
+\label{fig:crash_panel}
+\end{figure}
+
 \subsection{Utah vs.\ \#10 Washington Football Game (September~15, 2018)}
 \label{sec:game}
 
@@ -350,6 +413,13 @@ The model detects the full game-day cycle:
 $-85.9\%$ on 500~South at 14:00 (road closures),
 $+463.4\%$ at 19:00 (arrival surge),
 $+247.9\%$ at stadium core at 23:00 (post-game departure).
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\linewidth]{fig_game_summary.png}
+\caption{Football game day analysis. \textbf{(A)}~Event-link timeseries. \textbf{(B)}~PageRank deviation. \textbf{(C)}~$\mu$-control prediction error. \textbf{(D)}~Optimal $\mu$ over time.}
+\label{fig:game}
+\end{figure}
 
 
 % ================================================================
@@ -415,6 +485,20 @@ The correlation between raw ground-truth gap (between Tuesdays) and model predic
 The model error is 96.6\% of the raw input gap, confirming that the error comes from week-to-week GPS variation, not model miscalibration.
 
 This establishes the baseline: $\mu \approx 20$ on normal days, so any significant deviation signals a real disruption.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\linewidth]{fig_mu_profile_tuesday.png}
+\caption{Cross-validated Tuesday $\mu$ profile. \textbf{(A)}~Median optimal $\mu$ stays in range 10--20. \textbf{(B)}~Per-fold profiles. \textbf{(C)}~MRE at $\mu{=}20$ vs optimal: nearly identical.}
+\label{fig:tuesday}
+\end{figure}
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\linewidth]{fig_mu_groundtruth_vs_model.png}
+\caption{Ground truth gap vs model error. \textbf{(A)}~Both follow the same temporal pattern. \textbf{(B)}~Model self-distortion is only 3.9\%---PageRank is nearly transparent. \textbf{(C)}~Complete picture: input gap dominates output gap.}
+\label{fig:gt_model}
+\end{figure}
 
 \subsection{Practical Protocol}
 
