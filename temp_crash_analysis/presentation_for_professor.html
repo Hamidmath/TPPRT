@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Two-Phase PageRank — Summary for Professor</title>
+<style>
+  :root { --accent:#1565C0; --red:#c62828; --green:#2e7d32; --bg:#fff; --text:#212121; --muted:#666; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Segoe UI',Arial,sans-serif; background:var(--bg); color:var(--text);
+         line-height:1.8; max-width:900px; margin:0 auto; padding:40px 30px; }
+  h1 { font-size:1.8em; color:var(--accent); margin-bottom:8px; }
+  h2 { font-size:1.3em; color:var(--accent); margin:30px 0 12px; padding-bottom:5px;
+       border-bottom:2px solid var(--accent); }
+  h3 { font-size:1.05em; margin:18px 0 8px; }
+  p { margin-bottom:12px; }
+  .subtitle { color:var(--muted); margin-bottom:24px; }
+  .key { background:#e3f2fd; border-left:4px solid var(--accent); padding:14px 18px;
+         border-radius:6px; margin:16px 0; }
+  .good { background:#e8f5e9; border-left:4px solid var(--green); padding:14px 18px;
+          border-radius:6px; margin:16px 0; }
+  .bad { background:#fef2f2; border-left:4px solid var(--red); padding:14px 18px;
+         border-radius:6px; margin:16px 0; }
+  img { width:100%; border-radius:8px; border:1px solid #ddd; margin:12px 0; }
+  table { border-collapse:collapse; margin:12px 0; font-size:.9em; width:100%; }
+  th { background:var(--accent); color:#fff; padding:8px 12px; text-align:left; }
+  td { padding:7px 12px; border-bottom:1px solid #e0e0e0; }
+  tr:nth-child(even) { background:#f5f5f5; }
+  .pos { color:var(--green); font-weight:600; }
+  .neg { color:var(--red); font-weight:600; }
+  .num { font-family:'Consolas',monospace; }
+  hr { border:none; border-top:1px solid #e0e0e0; margin:30px 0; }
+</style>
+</head>
+<body>
+
+<h1>Two-Phase PageRank: What We Did and What We Found</h1>
+<p class="subtitle">Summary for discussion — April 2026</p>
+
+<!-- ============================================================ -->
+<h2>1. The Problem</h2>
+<p>We have <strong>467,911 GPS trajectories</strong> on Salt Lake City's road network (99,716 links)
+over 30 days. But in any 15-minute window, only <strong>2-3% of links</strong> have GPS observations.
+We want to estimate a complete traffic distribution across all links.</p>
+
+<img src="fig11_sparsity_histogram.png" alt="Sparsity">
+<p style="font-size:.85em; color:#666;">97% of links are unobserved in any given window.</p>
+
+<!-- ============================================================ -->
+<h2>2. The Pipeline</h2>
+<p>Three steps:</p>
+<p><strong>Step 1: Smoothing.</strong> Graph diffusion spreads observed counts to neighbours.
+This fills the 97% gaps using road adjacency. At &gamma;=0.26, we retain 67% of variance
+while achieving 100% coverage. The smoothing is a spectral low-pass filter — it preserves
+the overall traffic pattern (DC component) while attenuating sampling noise.</p>
+
+<p><strong>Step 2: Two-Phase PageRank.</strong> A random walk on the network with
+<em>travel-time self-loops</em>: each link retains mass proportional to &mu;&middot;length/speed.
+This makes highways hold more mass than short connectors — matching real traffic physics.</p>
+
+<p><strong>Step 3: Demand weighting.</strong> We multiply transition weights by
+demand[j]<sup>&gamma;</sup>, where demand is the average popularity from training data.
+This lets us push the damping factor to 0.96 (only 4% ground truth needed).</p>
+
+<!-- ============================================================ -->
+<h2>3. Core Result: Accuracy</h2>
+
+<table>
+<tr><th>Metric</th><th>Value</th><th>Meaning</th></tr>
+<tr><td>Top-100 MRE</td><td class="num pos">0.031</td><td>3.1% average error on the 100 busiest roads</td></tr>
+<tr><td>Overall MRE</td><td class="num pos">0.046</td><td>4.6% average error across all 99,716 links</td></tr>
+<tr><td>Pearson r</td><td class="num pos">0.997</td><td>Near-perfect linear correlation with ground truth</td></tr>
+<tr><td>Rank overlap</td><td class="num pos">94/100</td><td>94 of the true top-100 links correctly identified</td></tr>
+</table>
+<p style="font-size:.85em;">Evaluated on 49 random held-out timeframes (seed=42).</p>
+
+<img src="fig3_mre_heatmap.png" alt="Parameter heatmap">
+<p style="font-size:.85em; color:#666;">Parameter sensitivity: the optimal region (&mu;=20, &beta;=0.9) is broad and stable.</p>
+
+<!-- ============================================================ -->
+<h2>4. Key Innovation: Demand Weighting (&gamma;)</h2>
+
+<div class="key">
+<p><strong>Problem:</strong> At d=0.80, the model uses 20% ground truth. We wanted d&gt;0.90
+(less ground truth dependence), but MRE doubles.</p>
+<p><strong>Solution:</strong> Add one parameter &gamma; that weights transitions by average link
+popularity: P(i&rarr;j) &prop; w<sub>ij</sub> &middot; demand[j]<sup>&gamma;</sup></p>
+<p><strong>Result:</strong> At d=0.96, &gamma;=0.20: Overall MRE = <strong>0.038</strong> — better
+than the original at d=0.80, using only 4% ground truth.</p>
+</div>
+
+<img src="fig_damping_final.png" alt="Damping optimization">
+<p style="font-size:.85em; color:#666;">(A) Without demand weighting, MRE rises with d. (B) With &gamma;, MRE stays below 0.05 even at d=0.96. (C) Direct comparison.</p>
+
+<p><strong>Validated</strong> across 3 independent train/test splits:</p>
+<table>
+<tr><th>Config</th><th>Temporal</th><th>Day-of-Week</th><th>5-Fold CV</th><th>Average</th></tr>
+<tr><td>d=0.80, &gamma;=0 (original)</td><td class="num">0.048</td><td class="num">0.046</td><td class="num">0.046</td><td class="num">0.047</td></tr>
+<tr><td>d=0.94, &gamma;=0.15</td><td class="num pos">0.044</td><td class="num pos">0.042</td><td class="num pos">0.043</td><td class="num pos">0.043</td></tr>
+<tr><td>d=0.96, &gamma;=0.20</td><td class="num pos">0.040</td><td class="num pos">0.038</td><td class="num pos">0.038</td><td class="num pos">0.039</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2>5. Event Detection: I-15 Crash</h2>
+<p>September 20, 2018: a 4-vehicle crash blocked I-15 SB for 3.5 hours (7:30-11:00 AM).
+We compared crash-day PageRank mass against 3 baseline Thursdays.</p>
+
+<img src="fig5_combined_panel.png" alt="Crash analysis">
+<p style="font-size:.85em; color:#666;">(A) Smoothed SB traffic. (B) Raw GPS counts (sparse!). (C) PageRank deviation: -18.9% at peak, +291% rebound. (D) Surface streets.</p>
+
+<table>
+<tr><th>Time</th><th>Phase</th><th>I-15 SB</th><th>I-15 NB</th></tr>
+<tr><td>06:00</td><td>Pre-crash</td><td class="num">+1.7%</td><td class="num">+96.5%</td></tr>
+<tr><td>08:30</td><td>Peak crash</td><td class="num neg">-18.9%</td><td class="num neg">-92.7%</td></tr>
+<tr><td>10:30</td><td>Rebound</td><td class="num pos">+291.4%</td><td class="num">-40.9%</td></tr>
+<tr><td>11:30</td><td>Recovery</td><td class="num">+36.7%</td><td class="num">+37.1%</td></tr>
+</table>
+
+<p>The demand-weighted model (d=0.96) gives <strong>identical deviations</strong> — crash detection
+works with only 4% ground truth.</p>
+
+<!-- ============================================================ -->
+<h2>6. Event Detection: Football Game</h2>
+<p>September 15: Utah vs #10 Washington at Rice-Eccles Stadium (47,445 attendance).
+Documented road closures: 500 South (lane reduction) and Guardsman Way (full closure).</p>
+
+<img src="fig_game_summary.png" alt="Game day analysis">
+<p style="font-size:.85em; color:#666;">(A) Traffic surge at 19:00. (B) Deviation pattern. (C) &mu;-control prediction. (D) Optimal &mu; over time.</p>
+
+<p>The model captures: road closures (-85.9% on 500 South), arrival surge (+463%), and
+post-game departure (+248%).</p>
+
+<!-- ============================================================ -->
+<h2>7. The Big Finding: &mu; Controls Everything Locally</h2>
+
+<div class="key">
+<p><strong>&mu;</strong> (dwell-time scale) controls how much mass a link retains per iteration.
+At &mu;=20 (default), self-loop probability is 99.5%. This is why modifying speed, lanes,
+or even removing links from the adjacency had <strong>no effect</strong> (&lt;1%).
+Those changes affect the 0.5% outgoing flow. Only &mu; affects the 99.5% retained mass.</p>
+</div>
+
+<table>
+<tr><th>Intervention on crash links</th><th>Max effect on SB mass</th></tr>
+<tr><td>Speed = 0.1 m/s</td><td class="num">-0.44%</td></tr>
+<tr><td>Lanes = 1</td><td class="num">-0.54%</td></tr>
+<tr><td>Remove from adjacency entirely</td><td class="num">+0.67%</td></tr>
+<tr><td><strong>&mu; = 0.01</strong></td><td class="num neg"><strong>-64.4%</strong></td></tr>
+</table>
+
+<h3>Crash prediction WITHOUT crash-day data:</h3>
+<p>Using Sept 13 (normal Thursday) as input, reducing &mu; on the 21 SB crash links:</p>
+<table>
+<tr><th>Time</th><th>Error at &mu;=20</th><th>Best &mu;</th><th>Error</th><th>Improvement</th></tr>
+<tr><td>08:00</td><td class="num neg">34.1%</td><td class="num">0.10</td><td class="num pos">0.0%</td><td class="num pos">+100%</td></tr>
+<tr><td>08:30</td><td class="num neg">179.1%</td><td class="num">0.01</td><td class="num pos">11.5%</td><td class="num pos">+93.6%</td></tr>
+<tr><td>08:45</td><td class="num neg">380.7%</td><td class="num">0.00</td><td class="num pos">26.4%</td><td class="num pos">+93.1%</td></tr>
+</table>
+
+<p>Same approach on the football game: <strong>94-98% error reduction</strong> during closure phases.</p>
+
+<!-- ============================================================ -->
+<h2>8. Baseline Validation: &mu;=20 Is Correct on Normal Days</h2>
+<p>Cross-validated across 4 Tuesdays (no events). The optimal &mu; stays between 10-20 at all
+96 timeframes, with only 1% improvement over fixed &mu;=20.</p>
+
+<img src="fig_mu_groundtruth_vs_model.png" alt="GT vs model">
+<p style="font-size:.85em; color:#666;">(A) Ground truth gap and model error follow the same pattern (r=0.9999). (B) Model self-distortion is only 3.9%. (C) Complete picture: input gap dominates.</p>
+
+<div class="good">
+<p><strong>r = 0.9999</strong> between raw data gap and model error. The model adds less than 4%
+distortion. When prediction error is high, it's because the <em>data itself</em> differs between
+weeks — not because the model is wrong.</p>
+</div>
+
+<!-- ============================================================ -->
+<h2>9. Three Parameters Run the Show</h2>
+
+<table>
+<tr><th>Parameter</th><th>What it does</th><th>Value</th></tr>
+<tr><td><strong>d</strong> (damping)</td><td>Balance between matrix (96%) and ground truth (4%)</td><td>0.96</td></tr>
+<tr><td><strong>&gamma;</strong> (demand)</td><td>Encodes average traffic demand into the matrix</td><td>0.20</td></tr>
+<tr><td><strong>&mu;</strong> (dwell-time)</td><td>Per-link mass retention — the only knob for local disruption</td><td>20 (normal), 0.01 (disrupted)</td></tr>
+</table>
+
+<div class="key">
+<p><strong>Separation of concerns:</strong> &gamma; handles global accuracy (enables high d).
+&mu; handles local disruption response (per-link control). Together: 4% ground truth,
+3.1% Top-100 MRE, and 93-98% error reduction on crash/event prediction.</p>
+</div>
+
+<hr>
+<p style="color:#999; font-size:.8em;">
+Salt Lake City road network: 99,716 links, 467,911 GPS trajectories, Aug 31 – Sep 30, 2018.
+GPU-accelerated (RTX 4070, CuPy). Full paper: paper/main.pdf (21 pages).
+Detailed reports: temp_crash_analysis/index.html (6 linked reports).
+</p>
+
+</body>
+</html>
