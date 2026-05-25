@@ -1,0 +1,22 @@
+{
+  "alpha_zero": {
+    "max_abs_diff": 0.00020312813049553957,
+    "l1_diff": 0.5627534612523802,
+    "corr_v_a_v_b": 0.5086058237888729,
+    "corr_v_a_E_a": 0.038566859953795087,
+    "corr_v_a_E_b": 0.009834327733519981,
+    "verdict": "INCONCLUSIVE - see numbers",
+    "iters_a": 1000,
+    "iters_b": 1000
+  },
+  "alpha_one": {
+    "max_abs_diff_to_E_a": 8.673617379884035e-19,
+    "corr_to_E_a": 1.0,
+    "verdict": "PASS"
+  },
+  "bins": {
+    "a": "2018-09-03 08:00:00",
+    "b": "2018-09-09 03:00:00",
+    "corr_E_a_E_b": 0.2720772018906962
+  }
+}

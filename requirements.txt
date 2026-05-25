@@ -1,0 +1,5 @@
+# Pinned environment used to produce Table 10 (paper main.tex, sec:ladder).
+# Versions captured on 2026-05-25 from the host that ran the experiments.
+python>=3.11,<3.13
+numpy==2.4.4
+scipy==1.17.1
