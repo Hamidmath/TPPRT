@@ -78,9 +78,16 @@ def main() -> int:
     fail = 0
 
     print("=== Input data hashes ===")
+    diffused_path = "data/popularity_results_smoothed_osm_gamma020.npz"
     for rel, expected in EXPECTED_HASH.items():
         p = ROOT / rel
         if not p.exists():
+            if rel == diffused_path:
+                print(f"  [SKIP] {rel}: not in repo, regenerate with")
+                print(f"         python pipeline/generate_smoothed.py "
+                      f"--input data/popularity_results_osm.npz \\")
+                print(f"           --output {diffused_path} --gamma 0.20")
+                continue
             print(f"  [MISS] {rel}: file not found")
             fail += 1
             continue

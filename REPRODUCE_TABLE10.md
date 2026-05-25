@@ -26,21 +26,38 @@ pip install -r requirements.txt
 
 ## 2. Input data (with hashes)
 
-| File | Size | Shape | SHA256 |
-|------|------|-------|--------|
-| `data/city_graph_full.json` | 16 MB | 99,716 links, 99,681 adjacency entries | `2f9023ce7b7543b7d4ca1489996867549e4431c2b28ff86ffa376a9038d8af3b` |
-| `data/popularity_results_smoothed_osm_gamma020.npz` | 62 MB | matrix (8640, 99716) float32; times (8640,); link_ids (99716,) | `7e8fd4221dd3ba21c1805ca626a6d4cd17d8e321d7112bb3b2488e7da83af1a5` |
+| File | Size | Shape | SHA256 | Tracked in git? |
+|------|------|-------|--------|-----------------|
+| `data/city_graph_full.json` | 16 MB | 99,716 links, 99,681 adjacency entries | `2f9023ce7b7543b7d4ca1489996867549e4431c2b28ff86ffa376a9038d8af3b` | yes |
+| `data/popularity_results_osm.npz` | 17 MB | raw counts matrix (8640, 99716) | (regenerated)  | yes |
+| `data/popularity_results_smoothed_osm_gamma020.npz` | 62 MB | matrix (8640, 99716) float32; times (8640,); link_ids (99716,) | `7e8fd4221dd3ba21c1805ca626a6d4cd17d8e321d7112bb3b2488e7da83af1a5` | **no, regenerate (below)** |
 
-Verify locally:
+Verify the tracked files:
 
 ```bash
-sha256sum data/city_graph_full.json data/popularity_results_smoothed_osm_gamma020.npz
+sha256sum data/city_graph_full.json
 ```
 
-`popularity_results_smoothed_osm_gamma020.npz` is the diffused popularity
-prior $\tilde E_b$ at $\gamma=0.20$. It is the output of the diffusion stage
-described in section "Diffusion" of the paper; from that section onward, all
-inputs and targets used in this paper are diffused at $\gamma=0.20$.
+### Regenerating the diffused input
+
+The 61 MB `popularity_results_smoothed_osm_gamma020.npz` is excluded from
+the repository to keep clones small. It is deterministic given the raw
+OSM popularity counts and the diffusion gamma. Regenerate it once with:
+
+```bash
+python pipeline/generate_smoothed.py \
+    --input  data/popularity_results_osm.npz \
+    --output data/popularity_results_smoothed_osm_gamma020.npz \
+    --gamma  0.20
+```
+
+This reads `popularity_results_osm.npz` (tracked in git), runs the graph-
+diffusion smoothing described in section "Diffusion" of the paper, and
+writes the same 61 MB npz used as both input and target throughout
+Table 10. Expected runtime: 1-3 minutes on a single core.
+
+After regeneration the SHA256 above should match (`7e8fd422...`); the
+`verify_table10.py` script checks it.
 
 ## 3. Sampling spec (frozen across all rows)
 
