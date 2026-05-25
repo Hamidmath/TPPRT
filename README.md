@@ -65,16 +65,7 @@ TwoPhase_PageRank_Project/
 │   (the 61 MB diffused gamma=0.20 npz is NOT tracked; regenerate from
 │   popularity_results_osm.npz, see Quick start below)
 │
-├── results/                        Table 10 outputs + per-row JSONs (verified)
-│
-└── documents/
-    ├── README.md
-    ├── notes/                      Discussion + appendix notes
-    └── walkthrough2/               Current SIGSPATIAL paper
-        ├── main.tex
-        ├── main.pdf                (built)
-        ├── figures/                Paper figures + their generator scripts
-        └── results/                Per-row JSONs copied for the paper build
+└── results/                        Table 10 outputs + per-row JSONs (verified)
 ```
 
 ## Algorithm
