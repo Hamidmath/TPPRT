@@ -1,0 +1,127 @@
+{
+  "K": 20,
+  "n_calls": 835,
+  "elapsed": 2559.286678314209,
+  "starts": [
+    {
+      "start_index": 0,
+      "x0": [
+        -20.0,
+        -2.0,
+        0.01,
+        0.11
+      ],
+      "x_opt": [
+        -20.000032960639768,
+        -1.9998447664831462,
+        0.01,
+        0.10453656741362673
+      ],
+      "f_opt": 0.7311811122959977,
+      "nfev": 120,
+      "nit": 3,
+      "success": true,
+      "message": "CONVERGENCE: RELATIVE REDUCTION OF F <= FACTR*EPSMCH"
+    },
+    {
+      "start_index": 1,
+      "x0": [
+        -25.0,
+        -5.0,
+        0.01,
+        0.1
+      ],
+      "x_opt": [
+        -25.29460482747742,
+        -2.2959805860889,
+        0.01,
+        0.11184369278644249
+      ],
+      "f_opt": 0.7316935068438584,
+      "nfev": 280,
+      "nit": 13,
+      "success": true,
+      "message": "CONVERGENCE: RELATIVE REDUCTION OF F <= FACTR*EPSMCH"
+    },
+    {
+      "start_index": 2,
+      "x0": [
+        -15.0,
+        0.0,
+        0.03,
+        0.08
+      ],
+      "x_opt": [
+        -14.939367087668476,
+        -1.7036122519126584,
+        0.01,
+        0.09634946238640747
+      ],
+      "f_opt": 0.7320882542897631,
+      "nfev": 270,
+      "nit": 8,
+      "success": false,
+      "message": "ABNORMAL: "
+    },
+    {
+      "start_index": 3,
+      "x0": [
+        -10.0,
+        -2.0,
+        0.05,
+        0.05
+      ],
+      "x_opt": [
+        -10.051661217815845,
+        -1.5708417335467038,
+        0.01,
+        0.08959588076576007
+      ],
+      "f_opt": 0.7504776130539043,
+      "nfev": 195,
+      "nit": 13,
+      "success": true,
+      "message": "CONVERGENCE: RELATIVE REDUCTION OF F <= FACTR*EPSMCH"
+    },
+    {
+      "start_index": 4,
+      "x0": [
+        0.0,
+        0.0,
+        0.05,
+        0.1
+      ],
+      "x_opt": [
+        -16.92758687316368,
+        -1.8274078647417025,
+        0.01,
+        0.09959450062255022
+      ],
+      "f_opt": 0.7310690822504387,
+      "nfev": 310,
+      "nit": 37,
+      "success": true,
+      "message": "CONVERGENCE: RELATIVE REDUCTION OF F <= FACTR*EPSMCH"
+    }
+  ],
+  "best": {
+    "start_index": 4,
+    "x0": [
+      0.0,
+      0.0,
+      0.05,
+      0.1
+    ],
+    "x_opt": [
+      -16.92758687316368,
+      -1.8274078647417025,
+      0.01,
+      0.09959450062255022
+    ],
+    "f_opt": 0.7310690822504387,
+    "nfev": 310,
+    "nit": 37,
+    "success": true,
+    "message": "CONVERGENCE: RELATIVE REDUCTION OF F <= FACTR*EPSMCH"
+  }
+}

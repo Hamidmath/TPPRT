@@ -1,0 +1,77 @@
+{
+  "tuned": {
+    "beta": 0.1019,
+    "rho": 0.1014,
+    "a_s": 0.0,
+    "a_l": 0.0,
+    "f_opt": null
+  },
+  "summary": {
+    "v0_climatology": {
+      "n_bins": 840,
+      "top100_mre_mean": 0.6968193656058104,
+      "top100_mre_median": 0.7271035412513382,
+      "overall_mre_mean": 7.72109218097167,
+      "overall_mre_median": 8.077115672129548,
+      "elapsed_s": 0.3044159412384033
+    },
+    "v1_sp_uniform_alpha015_uniformprior": {
+      "n_bins": 840,
+      "top100_mre_mean": 0.9997932519859151,
+      "top100_mre_median": 0.9936503418632401,
+      "overall_mre_mean": 9.91420448666571,
+      "overall_mre_median": 9.93106304062734,
+      "elapsed_s": 0.11427998542785645
+    },
+    "v2_sp_uniform_alpha005_uniformprior": {
+      "n_bins": 840,
+      "top100_mre_mean": 0.9999175037297402,
+      "top100_mre_median": 0.9938102375266251,
+      "overall_mre_mean": 9.91718524662281,
+      "overall_mre_median": 9.933587394055511,
+      "elapsed_s": 0.11344122886657715
+    },
+    "v3_sp_uniform_alpha005_popprior": {
+      "n_bins": 840,
+      "top100_mre_mean": 0.9042424684887743,
+      "top100_mre_median": 0.9175132925201597,
+      "overall_mre_mean": 9.191441712487642,
+      "overall_mre_median": 9.356921507688812,
+      "elapsed_s": 63.90975618362427
+    },
+    "v4_sp_speedonly_popprior": {
+      "n_bins": 840,
+      "top100_mre_mean": 0.9042424684887743,
+      "top100_mre_median": 0.9175132925201597,
+      "overall_mre_mean": 9.191441712487642,
+      "overall_mre_median": 9.356921507688812,
+      "elapsed_s": 64.03624558448792
+    },
+    "v5_sp_lanesonly_popprior": {
+      "n_bins": 840,
+      "top100_mre_mean": 0.9042424684887743,
+      "top100_mre_median": 0.9175132925201597,
+      "overall_mre_mean": 9.191441712487642,
+      "overall_mre_median": 9.356921507688812,
+      "elapsed_s": 64.44410395622253
+    },
+    "v6_sp_speed_lanes_popprior": {
+      "n_bins": 840,
+      "top100_mre_mean": 0.9042424684887743,
+      "top100_mre_median": 0.9175132925201597,
+      "overall_mre_mean": 9.191441712487642,
+      "overall_mre_median": 9.356921507688812,
+      "elapsed_s": 64.22538566589355
+    },
+    "v7_tp_speed_lanes_popprior": {
+      "n_bins": 840,
+      "top100_mre_mean": 0.8905691315846579,
+      "top100_mre_median": 0.9065547375844945,
+      "overall_mre_mean": 9.094914135019204,
+      "overall_mre_median": 9.278467912076614,
+      "elapsed_s": 89.87124013900757
+    }
+  },
+  "n_pairs_planned": 840,
+  "elapsed_total": 383.3774878978729
+}

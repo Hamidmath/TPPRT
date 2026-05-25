@@ -10,7 +10,7 @@ POPULARITY_NPZ = DATA_DIR / 'popularity_results_smoothed_026.npz'
 POPULARITY_RAW_NPZ = DATA_DIR / 'popularity_results.npz'
 OUTPUT_FILE = DATA_DIR / 'two_phase_pagerank_vector.json'
 NETWORK_XML = DATA_DIR / 'slc_network.xml'
-MATCHED_ROUTES = DATA_DIR / 'matched_routes.json'
+MATCHED_ROUTES = DATA_DIR / 'map-match' / 'noise3p5.json'
 
 # Output directories
 RESULTS_DIR = PROJECT_ROOT / 'results'
@@ -22,8 +22,6 @@ DEFAULT_PARAMS = {
     'alpha_l': 0.0,
     'beta': 0.9,
     'damping': 0.80,
-    'mu': 20.0,
-    'tau': 1.0,
     'top_k': 100,
     'top_k_boost': 1.0,
     'max_iters': 100,

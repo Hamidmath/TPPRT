@@ -19,7 +19,7 @@ from scipy import sparse
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import config
 
-ALPHA = 0.1  # Laplace smoothing pseudo-count
+ALPHA = 0.01  # Laplace smoothing pseudo-count (alpha experiment)
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -109,17 +109,18 @@ def process_and_save_matrix(pop_data: Dict, city_graph: Dict, output_path: str, 
             probs = c_diffused
         output_matrix[t_i, :] = probs
 
-    final_sparse = sparse.csr_matrix(output_matrix)
+    # After Laplace smoothing every cell is positive, so the matrix is
+    # effectively dense. Storing it as CSR roughly doubles memory (data
+    # + indices arrays), so we save it dense instead. Readers detect
+    # the format via the presence of the 'matrix' key.
     np.savez_compressed(
         output_path,
-        matrix_data=final_sparse.data,
-        matrix_indices=final_sparse.indices,
-        matrix_indptr=final_sparse.indptr,
-        matrix_shape=final_sparse.shape,
+        matrix=output_matrix,
+        matrix_shape=np.array(output_matrix.shape),
         times=input_times,
-        link_ids=graph_links
+        link_ids=graph_links,
     )
-    logger.info(f"Saved smoothed matrix to {output_path}")
+    logger.info(f"Saved smoothed matrix to {output_path} (dense, {output_matrix.shape})")
 
 def main():
     parser = argparse.ArgumentParser(description='Generate smoothed popularity data')

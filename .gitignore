@@ -5,10 +5,30 @@ __pycache__/
 *.egg-info/
 venv/
 
-# Data (large files)
-data/matched_routes.json
-popularity_results_smoothed.npz
-popularity_results_smoothed_026.npz
+# Massive intermediate data (not in repo; regenerable from raw inputs)
+data/compressed_routes.parquet
+data/map-match/
+data/network_osm.pkl
+
+# Old / alternative smoothing outputs (paper uses *_gamma020.npz only)
+data/popularity_results_smoothed_026*.npz
+data/popularity_results_smoothed_osm.npz
+data/popularity_results_smoothed_osm.bak_prev.npz
+data/popularity_results_osm.bak_prev.npz
+data/popularity_results.bak_prev.npz
+data/popularity_results.npz.bak_dwell
+
+# Network visualizations (HTML, regenerable)
+data/network_*.html
+
+# Build / cache artifacts
+*.bak_*
+*.bak
+texput.log
+.DS_Store
+.vscode/
+.idea/
+.gemini/
 
 # LaTeX build artifacts
 *.aux
@@ -20,11 +40,24 @@ popularity_results_smoothed_026.npz
 *.synctex.gz
 *.fls
 *.fdb_latexmk
+*.bbl
+*.blg
 
-# OS
-.DS_Store
+# Run logs and superseded documents
+experiments/
+experiments_2026_05_23/
+documents/experiments_autonomous_log.md
+documents/EXPERIMENTS_SUMMARY.md
+documents/related_work_notes.html
+documents/walkthrough/
 
-# IDE
-.vscode/
-.idea/
-.gemini/
+# Large intermediate result subtrees (multi-MB; not used by REPRODUCE_TABLE10.md)
+results/route_distribution_study/
+results/event_sept15/
+results/contract_eval/
+results/gamma_calibration/
+results/justification/
+results/loo_calibration/
+results/*_REPORT.md
+results/alpha_experiment.md
+results/v1_experiment.md

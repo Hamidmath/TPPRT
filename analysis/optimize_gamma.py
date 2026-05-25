@@ -341,7 +341,7 @@ def generate_plots(primary, verification=None):
     ax.legend()
 
     plt.tight_layout()
-    plt.savefig(OUTPUT_DIR / 'gamma_cv_predictive.png', dpi=200, bbox_inches='tight')
+    plt.savefig(OUTPUT_DIR / 'gamma_cv_predictive.pdf', bbox_inches='tight')
     plt.close()
 
     # ---------- Figure 2: Downstream & Variance ----------
@@ -371,7 +371,7 @@ def generate_plots(primary, verification=None):
     ax.legend()
 
     plt.tight_layout()
-    plt.savefig(OUTPUT_DIR / 'gamma_cv_downstream.png', dpi=200, bbox_inches='tight')
+    plt.savefig(OUTPUT_DIR / 'gamma_cv_downstream.pdf', bbox_inches='tight')
     plt.close()
 
     # ---------- Figure 3: Bias-Variance Tradeoff ----------
@@ -399,7 +399,7 @@ def generate_plots(primary, verification=None):
     ax.grid(True, alpha=0.3)
 
     plt.tight_layout()
-    plt.savefig(OUTPUT_DIR / 'gamma_cv_tradeoff.png', dpi=200, bbox_inches='tight')
+    plt.savefig(OUTPUT_DIR / 'gamma_cv_tradeoff.pdf', bbox_inches='tight')
     plt.close()
 
     # ---------- Figure 4: Verification comparison (if available) ----------
@@ -423,7 +423,7 @@ def generate_plots(primary, verification=None):
         ax.grid(True, alpha=0.3)
 
         plt.tight_layout()
-        plt.savefig(OUTPUT_DIR / 'gamma_cv_verification.png', dpi=200, bbox_inches='tight')
+        plt.savefig(OUTPUT_DIR / 'gamma_cv_verification.pdf', bbox_inches='tight')
         plt.close()
 
     print(f"\n  Plots saved to {OUTPUT_DIR}/")

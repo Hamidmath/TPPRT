@@ -42,25 +42,46 @@ def load_data(npz_path):
     N = len(links)
     lid_to_idx = {lid: i for i, lid in enumerate(links)}
 
-    loader = np.load(str(npz_path), allow_pickle=True)
-    matrix = csr_matrix(
-        (loader['matrix_data'], loader['matrix_indices'], loader['matrix_indptr']),
-        shape=loader['matrix_shape']
-    )
-    times = list(loader['times'])
-    pop_link_ids = list(loader['link_ids'])
+    from core.io import load_popularity_npz
+    bundle = load_popularity_npz(str(npz_path))
+    matrix = bundle['matrix']
+    times = bundle['times']
+    pop_link_ids = bundle['link_ids']
 
     return graph_data, links, N, lid_to_idx, matrix, times, pop_link_ids
 
 
+_POP_TO_GRAPH_CACHE = {}
+
+
+def _pop_to_graph_idx(pop_link_ids, lid_to_idx):
+    """Cache the pop-index -> graph-index projection (one int per pop column)."""
+    key = (id(pop_link_ids), id(lid_to_idx))
+    if key not in _POP_TO_GRAPH_CACHE:
+        proj = np.fromiter(
+            (lid_to_idx.get(lid, -1) for lid in pop_link_ids),
+            dtype=np.int64,
+            count=len(pop_link_ids),
+        )
+        _POP_TO_GRAPH_CACHE[key] = proj
+    return _POP_TO_GRAPH_CACHE[key]
+
+
 def extract_teleportation(matrix, t_idx, pop_link_ids, lid_to_idx, N):
-    """Extract and normalize teleportation vector for a timeframe."""
-    row = matrix.getrow(t_idx)
+    """Extract and normalize teleportation vector for a timeframe.
+
+    Works with both sparse-CSR and dense-wrapped matrices: pulls one row,
+    scatters it into a length-N vector via a cached pop->graph projection.
+    """
+    proj = _pop_to_graph_idx(pop_link_ids, lid_to_idx)
+    row_vals = matrix.getrow(t_idx).toarray().ravel()  # length = len(pop_link_ids)
+
     E_N = np.zeros(N)
-    for i, val in zip(row.indices, row.data):
-        lid = pop_link_ids[i]
-        if lid in lid_to_idx:
-            E_N[lid_to_idx[lid]] = float(val)
+    valid = proj >= 0
+    dst = proj[valid]
+    # Handle duplicate destinations (if any) by summing.
+    np.add.at(E_N, dst, row_vals[valid])
+
     s = E_N.sum()
     if s > 0:
         E_N /= s
@@ -191,7 +212,7 @@ def generate_plots(all_metrics, output_dir):
     axes[1, 1].legend()
 
     plt.tight_layout()
-    plt.savefig(output_dir / 'evaluation_summary.png', dpi=200, bbox_inches='tight')
+    plt.savefig(output_dir / 'evaluation_summary.pdf', bbox_inches='tight')
     plt.close()
 
     # 5. Temporal MRE heatmap (by hour and day-of-week)
@@ -229,7 +250,7 @@ def generate_plots(all_metrics, output_dir):
         axes[1].set_xticks(range(0, 24, 3))
 
         plt.tight_layout()
-        plt.savefig(output_dir / 'evaluation_temporal.png', dpi=200, bbox_inches='tight')
+        plt.savefig(output_dir / 'evaluation_temporal.pdf', bbox_inches='tight')
         plt.close()
 
     print(f"  Plots saved to {output_dir}/")
@@ -264,7 +285,6 @@ def main():
     print_stat("Timeframes", num_frames)
     print_stat("Random seed", args.seed)
     print_stat("Top-K", args.top_k)
-    print_stat("mu", PARAMS['mu'])
     print_stat("damping", PARAMS['damping'])
     print_stat("beta", PARAMS['beta'])
 
@@ -425,7 +445,7 @@ def main():
         f.write(f"Two-Phase PageRank Evaluation Results\n")
         f.write(f"{'=' * 60}\n")
         f.write(f"Timeframes: {num_frames}, Seed: {args.seed}\n")
-        f.write(f"Parameters: mu={PARAMS['mu']}, d={PARAMS['damping']}, beta={PARAMS['beta']}\n\n")
+        f.write(f"Parameters: d={PARAMS['damping']}, beta={PARAMS['beta']}\n\n")
 
         f.write(f"AGGREGATE METRICS:\n")
         for key in metric_keys:

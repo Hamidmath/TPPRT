@@ -531,7 +531,7 @@ def generate_plots(sparsity_data, comparison_results, pred_results, vectors, sta
             axes[2].legend()
 
     plt.tight_layout()
-    plt.savefig(OUTPUT_DIR / '1_sparsity_problem.png', dpi=200, bbox_inches='tight')
+    plt.savefig(OUTPUT_DIR / '1_sparsity_problem.pdf', bbox_inches='tight')
     plt.close()
 
     # ---------- Figure 2: Smoothing Impact on PageRank ----------
@@ -583,7 +583,7 @@ def generate_plots(sparsity_data, comparison_results, pred_results, vectors, sta
             axes[2].text(i, v + 1, f'{v:.0f}', ha='center', fontsize=10, fontweight='bold')
 
         plt.tight_layout()
-        plt.savefig(OUTPUT_DIR / '2_smoothing_impact.png', dpi=200, bbox_inches='tight')
+        plt.savefig(OUTPUT_DIR / '2_smoothing_impact.pdf', bbox_inches='tight')
         plt.close()
 
     # ---------- Figure 3: Predictive Power ----------
@@ -606,7 +606,7 @@ def generate_plots(sparsity_data, comparison_results, pred_results, vectors, sta
             ax.text(i - w/2, t + 0.003, f'{t:.3f}', ha='center', fontsize=9, fontweight='bold')
             ax.text(i + w/2, o + 0.003, f'{o:.3f}', ha='center', fontsize=9, fontweight='bold')
         plt.tight_layout()
-        plt.savefig(OUTPUT_DIR / '3_predictive_power.png', dpi=200, bbox_inches='tight')
+        plt.savefig(OUTPUT_DIR / '3_predictive_power.pdf', bbox_inches='tight')
         plt.close()
 
     print(f"\n  Plots saved to {OUTPUT_DIR}/")

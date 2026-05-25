@@ -1,29 +1,57 @@
+"""
+Two-phase PageRank chain — implementation of the model defined in
+`documents/walkthrough2/main.tex`, §7.
+
+Column-stochastic block matrix M_b (state ordering [up; down]):
+
+    M_b = [ (1 - beta) * P_up        rho * E_b * 1^T   ]
+          [ beta * I                  (1 - rho) * P_down ]
+
+Iteration: v_{n+1} = M_b @ v_n, with v in R^{2N}.
+
+Implementation note: the (1, 2) block is rank-1 (every column equals
+rho * E_b). Materialising it as a sparse matrix would cost N**2
+nonzeros (~10**10 for SLC). We instead apply M_b through a rank-1
+trick at iteration time:
+
+    (M_b @ v)_up   = (1 - beta) * P_up @ v_up + rho * E_b * sum(v_down)
+    (M_b @ v)_down = beta * v_up + (1 - rho) * P_down @ v_down
+
+`P_up` and `P_down` here are column-stochastic; the helper
+`build_phase_matrix` produces row-stochastic matrices on the directed
+graph, which we transpose once.
+
+PARAMS:
+    beta   commit rate (up -> down)              default 0.124
+    rho    restart rate (down -> up)             default 0.147
+    alpha_s, alpha_l  speed/lane physics weights default 0
+    max_iters, tol    iteration controls
+"""
 import json
 import logging
 import numpy as np
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import Dict
 
-from scipy.sparse import csr_matrix, vstack, hstack
+from scipy.sparse import csr_matrix
 
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import config
 
-# -----------------------------------------------------------------------------
-# Configuration
-# -----------------------------------------------------------------------------
 PARAMS = dict(config.DEFAULT_PARAMS)
+PARAMS.setdefault('rho', 0.147)
+PARAMS.setdefault('beta', 0.124)
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# -----------------------------------------------------------------------------
-# Core Functions
-# -----------------------------------------------------------------------------
 
 def compute_speed_lane_weights(graph_data: Dict, is_up_phase: bool) -> np.ndarray:
-    """Computes a vector of physics-based weights, perfectly matching the original logic."""
+    """Per-link weights used to build P_up / P_down outgoing distributions.
+    With alpha_s = alpha_l = 0 (default) this returns all-ones, giving
+    uniform-over-neighbours transitions on the directed road graph.
+    """
     links = list(graph_data['links'].keys())
     N = len(links)
     weights = np.ones(N)
@@ -31,233 +59,164 @@ def compute_speed_lane_weights(graph_data: Dict, is_up_phase: bool) -> np.ndarra
     alpha_s = PARAMS['alpha_s'] if is_up_phase else -PARAMS['alpha_s']
     alpha_l = PARAMS['alpha_l'] if is_up_phase else -PARAMS['alpha_l']
 
-    speeds = []
-    lanes = []
-
+    speeds, lanes = [], []
     for lid in links:
-        edge_data = graph_data['links'].get(lid, {})
-        speeds.append(edge_data.get('speed', 11.17))
-        lanes.append(edge_data.get('lanes', 1.0))
-
+        ed = graph_data['links'].get(lid, {})
+        speeds.append(ed.get('speed', 11.17))
+        lanes.append(ed.get('lanes', 1.0))
     speeds = np.array(speeds)
     lanes = np.array(lanes)
-
     if np.mean(speeds) > 0: speeds = speeds / np.mean(speeds)
     if np.mean(lanes) > 0: lanes = lanes / np.mean(lanes)
 
     for i in range(N):
-        weight = 1.0
-        if alpha_s != 0: weight *= (speeds[i] ** alpha_s)
-        if alpha_l != 0: weight *= (lanes[i] ** alpha_l)
-        weights[i] = weight
-
+        w = 1.0
+        if alpha_s != 0: w *= speeds[i] ** alpha_s
+        if alpha_l != 0: w *= lanes[i] ** alpha_l
+        weights[i] = w
     return weights
 
-def build_phase_matrix(graph_data: Dict, weights: np.ndarray) -> csr_matrix:
-    """Builds a standard N x N transition matrix P for a single phase.
 
-    Includes travel-time self-loops scaled by PARAMS['mu']. Each link retains
-    a fraction of its mass proportional to length/speed, modeling the dwell time
-    vehicles spend traversing the link.
+def build_phase_matrix(graph_data: Dict, weights: np.ndarray) -> csr_matrix:
+    """Row-stochastic N x N transition matrix supported on the directed
+    road graph. Row i is the next-link distribution from link i, weighted
+    by `weights[j]` over outgoing neighbours j. No self-loops.
     """
     links = list(graph_data['links'].keys())
     N = len(links)
     id_to_idx = {lid: i for i, lid in enumerate(links)}
-    mu = PARAMS.get('mu', 0.0)
 
-    row = []
-    col = []
-    data = []
-
+    row, col, data = [], [], []
     adj = graph_data.get('adjacency', {})
 
     for i, lid in enumerate(links):
         out_links = adj.get(lid, [])
+        succ = [id_to_idx[ol] for ol in out_links if ol in id_to_idx]
+        out_w = [weights[j] for j in succ]
 
-        successors_indices = [id_to_idx[out_lid] for out_lid in out_links if out_lid in id_to_idx]
-
-        out_weights = [weights[j] for j in successors_indices]
-
-        # Travel-time self-loop: mass stays proportional to time spent on link
-        edge_data = graph_data['links'][lid]
-        self_w = mu * edge_data.get('length', 100.0) / max(edge_data.get('speed', 11.17), 0.1) if mu > 0 else 0.0
-
-        total_weight = sum(out_weights) + self_w
-
-        if total_weight > 0:
-            if self_w > 0:
-                row.append(i)
-                col.append(i)
-                data.append(self_w / total_weight)
-            for j, w in zip(successors_indices, out_weights):
-                row.append(i)
-                col.append(j)
-                data.append(w / total_weight)
+        total = sum(out_w)
+        if total > 0:
+            for j, w in zip(succ, out_w):
+                row.append(i); col.append(j); data.append(w / total)
 
     return csr_matrix((data, (row, col)), shape=(N, N))
 
 
-def build_two_phase_matrix(graph_data: Dict) -> csr_matrix:
-    """Builds the 2N x 2N Two-Phase Markov block matrix."""
-    N = len(graph_data['links'])
-    logger.info(f"Building 2N x 2N Two-Phase Matrix (N={N})")
+def build_phase_kernels(graph_data: Dict):
+    """Build column-stochastic P_up_cs, P_down_cs (transposes of row-stochastic
+    P_up, P_down)."""
+    up_w = compute_speed_lane_weights(graph_data, is_up_phase=True)
+    down_w = compute_speed_lane_weights(graph_data, is_up_phase=False)
+    P_up = build_phase_matrix(graph_data, up_w)
+    P_down = build_phase_matrix(graph_data, down_w)
+    return P_up.T.tocsr(), P_down.T.tocsr()
 
-    up_weights = compute_speed_lane_weights(graph_data, is_up_phase=True)
-    down_weights = compute_speed_lane_weights(graph_data, is_up_phase=False)
 
-    P_up_raw = build_phase_matrix(graph_data, up_weights)
-    P_down_raw = build_phase_matrix(graph_data, down_weights)
-
-    beta = PARAMS['beta']
-    P_up = P_up_raw.multiply(1.0 - beta)
-
-    row_T = np.arange(N)
-    col_T = np.arange(N)
-    data_T = np.ones(N) * beta
-    T_down = csr_matrix((data_T, (row_T, col_T)), shape=(N, N))
-
-    zero_block = csr_matrix((N, N))
-
-    top_block = hstack([P_up, T_down])
-    bottom_block = hstack([zero_block, P_down_raw])
-
-    M_2N = vstack([top_block, bottom_block])
-    logger.info(f"Generated 2N Matrix of shape {M_2N.shape}")
-
-    return M_2N
-
-def build_teleportation_vector(graph_data: Dict, target_time: str, npz_path=None) -> np.ndarray:
-    """Constructs the exact E_N Teleportation vector by extracting the smoothed ground truth."""
+def build_teleportation_vector(graph_data: Dict, target_time: str,
+                                npz_path: str = None) -> np.ndarray:
+    """E_N = row-normalised popularity at `target_time`, projected onto the
+    canonical link order of `graph_data`. Uses raw count matrix by default
+    (POPULARITY_RAW_NPZ), per the walkthrough §6.
+    """
     if npz_path is None:
-        npz_path = str(config.POPULARITY_NPZ)
-    logger.info(f"Extracting Teleportation Vector for {target_time} from target matrix...")
+        npz_path = str(config.POPULARITY_RAW_NPZ)
+    logger.info(f"Loading teleportation prior E_b for {target_time} from {npz_path}")
+
     links = list(graph_data['links'].keys())
     N = len(links)
+    lid_to_idx = {lid: i for i, lid in enumerate(links)}
 
-    loader = np.load(str(npz_path), allow_pickle=True)
-    matrix = csr_matrix((loader['matrix_data'], loader['matrix_indices'], loader['matrix_indptr']), shape=loader['matrix_shape'])
-    times = list(loader['times'])
-    pop_link_ids = list(loader['link_ids'])
+    from core.io import load_popularity_npz
+    bundle = load_popularity_npz(npz_path)
+    matrix = bundle['matrix']
+    times = bundle['times']
+    pop_link_ids = bundle['link_ids']
 
     if target_time not in times:
         target_time = times[0]
-        logger.warning(f"Target time not found. Defaulting to {target_time}")
+        logger.warning(f"Target time not in matrix; defaulting to {target_time}")
 
     t_idx = times.index(target_time)
-    row = matrix.getrow(t_idx)
+    row_vals = matrix.getrow(t_idx).toarray().ravel()
 
-    lid_to_idx = {lid: i for i, lid in enumerate(links)}
+    proj = np.fromiter(
+        (lid_to_idx.get(lid, -1) for lid in pop_link_ids),
+        dtype=np.int64,
+        count=len(pop_link_ids),
+    )
     E_N = np.zeros(N)
+    valid = proj >= 0
+    np.add.at(E_N, proj[valid], row_vals[valid])
 
-    for i, val in zip(row.indices, row.data):
-        lid = pop_link_ids[i]
-        if lid in lid_to_idx:
-            E_N[lid_to_idx[lid]] = float(val)
-
-    s = np.sum(E_N)
+    s = E_N.sum()
     if s > 0:
-        E_N = E_N / s
+        E_N /= s
     else:
         E_N = np.ones(N) / N
-
     return E_N
 
-def sharpen_teleportation(E_N: np.ndarray, tau: float) -> np.ndarray:
-    """Raise teleportation vector to power tau and renormalize to concentrate mass on top links."""
-    if tau == 1.0:
-        return E_N.copy()
-    E_sharp = np.power(E_N, tau)
-    s = np.sum(E_sharp)
-    if s > 0:
-        E_sharp /= s
-    else:
-        E_sharp = E_N.copy()
-    return E_sharp
 
-def boost_top_k(E_N: np.ndarray, K: int, boost: float) -> np.ndarray:
-    """Multiply teleportation weights of top-K links by boost factor, then renormalize."""
-    if boost == 1.0 or K <= 0:
-        return E_N.copy()
-    E_b = E_N.copy()
-    top_idx = np.argsort(E_N)[::-1][:K]
-    E_b[top_idx] *= boost
-    E_b /= np.sum(E_b)
-    return E_b
-
-def run_power_iteration(M_2N: csr_matrix, E_2N: np.ndarray) -> np.ndarray:
-    """Executes the PageRank power iteration."""
-    logger.info("Executing 2N Power Iteration...")
-    damping = PARAMS['damping']
-    tol = PARAMS['tol']
-    max_iters = PARAMS['max_iters']
-
-    v_2N = E_2N.copy()
-    M_T = M_2N.transpose()
-
-    for i in range(max_iters):
-        v_next = damping * M_T.dot(v_2N) + (1 - damping) * E_2N
-
-        S = np.sum(v_next)
-        if S < 1.0:
-            v_next += E_2N * (1.0 - S)
-
-        diff = np.sum(np.abs(v_next - v_2N))
-        v_2N = v_next
-
+def power_iteration(P_up_cs: csr_matrix, P_down_cs: csr_matrix,
+                     E_b: np.ndarray, beta: float, rho: float,
+                     tol: float, max_iter: int):
+    """Apply M_b (column-stochastic, rank-1 trick) until the L1 change drops
+    below `tol`. Returns (v_up, v_down, n_iter)."""
+    N = E_b.shape[0]
+    v_up = E_b.copy()
+    v_down = np.zeros(N)
+    for k in range(max_iter):
+        s_down = float(v_down.sum())
+        v_up_new = (1.0 - beta) * (P_up_cs @ v_up) + rho * E_b * s_down
+        v_down_new = beta * v_up + (1.0 - rho) * (P_down_cs @ v_down)
+        s = float(v_up_new.sum() + v_down_new.sum())
+        if s > 0:
+            v_up_new /= s
+            v_down_new /= s
+        diff = float(np.abs(v_up_new - v_up).sum() + np.abs(v_down_new - v_down).sum())
+        v_up, v_down = v_up_new, v_down_new
         if diff < tol:
-            logger.info(f"Converged successfully at iteration {i} (diff={diff:.8f})")
-            break
+            return v_up, v_down, k + 1
+    return v_up, v_down, max_iter
 
-    return v_2N
 
 def main():
-    logger.info("Starting Two-Phase PageRank Execution...")
-
+    logger.info("Two-phase PageRank (PDF spec)")
     with open(config.GRAPH_FILE, 'r') as f:
         graph_data = json.load(f)
-
     links = list(graph_data['links'].keys())
     N = len(links)
 
-    M_2N = build_two_phase_matrix(graph_data)
+    logger.info(f"Building column-stochastic phase kernels P_up, P_down for N={N}")
+    P_up_cs, P_down_cs = build_phase_kernels(graph_data)
 
     target_time = "2018-09-08 08:00:00"
-    E_N = build_teleportation_vector(graph_data, target_time)
+    E_b = build_teleportation_vector(graph_data, target_time)
 
-    # Concentrate teleportation on top-K links
-    E_tele = sharpen_teleportation(E_N, PARAMS['tau'])
-    E_tele = boost_top_k(E_tele, PARAMS['top_k'], PARAMS['top_k_boost'])
-    E_2N = np.concatenate([E_tele, np.zeros(N)])
+    beta = PARAMS['beta']
+    rho = PARAMS['rho']
+    tol = PARAMS['tol']
+    max_iter = PARAMS['max_iters']
+    logger.info(f"Iterating: beta={beta} rho={rho} tol={tol} max_iter={max_iter}")
+    v_up, v_down, n_iter = power_iteration(
+        P_up_cs, P_down_cs, E_b, beta, rho, tol, max_iter
+    )
+    logger.info(f"Converged in {n_iter} iterations.")
 
-    v_2N = run_power_iteration(M_2N, E_2N)
-
-    logger.info("Collapsing 2N output into macroscopic N dimensions...")
-    v_up = v_2N[:N]
-    v_down = v_2N[N:]
     v_final = v_up + v_down
+    v_final /= v_final.sum()
 
-    v_final = v_final / np.sum(v_final)
+    abs_err = np.abs(E_b - v_final)
+    overall_mre = float(np.mean(abs_err / (E_b + 1e-9)))
+    top_idx = np.argsort(E_b)[::-1][:100]
+    top100_mre = float(np.mean(abs_err[top_idx] / (E_b[top_idx] + 1e-9)))
+    logger.info(f"Overall MRE vs E_b: {overall_mre:.4f}")
+    logger.info(f"Top-100 MRE vs E_b: {top100_mre:.4f}")
 
-    # Evaluate MRE
-    mre_sum = 0
-    for i in range(N):
-        mre_sum += abs(E_N[i] - v_final[i]) / (E_N[i] + 1e-9)
-    logger.info(f"SUCCESS: Architectural Mean Relative Error (MRE) against target: {mre_sum / N:.4f}")
-
-    # Top-100 MRE
-    top_100_indices = np.argsort(E_N)[::-1][:100]
-    t_top100 = E_N[top_100_indices]
-    p_top100 = v_final[top_100_indices]
-    mre_top100 = np.mean(np.abs(t_top100 - p_top100) / (t_top100 + 1e-9))
-    logger.info(f"Top-100 MRE: {mre_top100:.4f}")
-
-    # Save Results
-    result_dict = {lid: float(v_final[i]) for i, lid in enumerate(links)}
-
+    out = {lid: float(v_final[i]) for i, lid in enumerate(links)}
     with open(config.OUTPUT_FILE, 'w') as f:
-        json.dump(result_dict, f)
+        json.dump(out, f)
+    logger.info(f"Wrote {config.OUTPUT_FILE}")
 
-    logger.info(f"Successfully generated Two-Phase PageRank vector at {config.OUTPUT_FILE}.")
 
 if __name__ == "__main__":
     main()
