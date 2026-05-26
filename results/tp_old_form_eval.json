@@ -1,0 +1,66 @@
+{
+  "model": "old-form (separate damping + E_{2N} teleportation)",
+  "n_pairs": 840,
+  "seed": 7,
+  "bpw": 120,
+  "alphas": [
+    0.05,
+    0.15
+  ],
+  "betas": [
+    0.05,
+    0.1,
+    0.15
+  ],
+  "data": "popularity_results_smoothed_osm_gamma020.npz",
+  "results": {
+    "alpha_0.05_beta_0.05": {
+      "alpha": 0.05,
+      "beta": 0.05,
+      "top100_mean": 0.8100507532169763,
+      "top100_median": 0.8152664475200019,
+      "overall_mean": 1.063072560380287,
+      "overall_median": 0.9761347997913649
+    },
+    "alpha_0.05_beta_0.1": {
+      "alpha": 0.05,
+      "beta": 0.1,
+      "top100_mean": 0.8069732284500956,
+      "top100_median": 0.8123350642843716,
+      "overall_mean": 1.0600678775517283,
+      "overall_median": 0.9744522415132431
+    },
+    "alpha_0.05_beta_0.15": {
+      "alpha": 0.05,
+      "beta": 0.15,
+      "top100_mean": 0.8046161356205466,
+      "top100_median": 0.8100074248974588,
+      "overall_mean": 1.0578612619274879,
+      "overall_median": 0.9731417227157398
+    },
+    "alpha_0.15_beta_0.05": {
+      "alpha": 0.15,
+      "beta": 0.05,
+      "top100_mean": 0.6726833884120889,
+      "top100_median": 0.6824052598099768,
+      "overall_mean": 0.915587779023529,
+      "overall_median": 0.8955416788761497
+    },
+    "alpha_0.15_beta_0.1": {
+      "alpha": 0.15,
+      "beta": 0.1,
+      "top100_mean": 0.6690532732301959,
+      "top100_median": 0.6784226163547855,
+      "overall_mean": 0.9112744401809323,
+      "overall_median": 0.8944817053163342
+    },
+    "alpha_0.15_beta_0.15": {
+      "alpha": 0.15,
+      "beta": 0.15,
+      "top100_mean": 0.666046713437886,
+      "top100_median": 0.6754148016440139,
+      "overall_mean": 0.9076595301992866,
+      "overall_median": 0.893357914837613
+    }
+  }
+}

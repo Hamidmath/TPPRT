@@ -96,29 +96,42 @@ the Overall MRE used in the paper.
 
 | # | Variant (paper) | Script | Output JSON | JSON key | Ov. MRE |
 |---|-----------------|--------|-------------|----------|---------|
+| 0a | SP uniform prior, $\alpha=0.15$ | `analysis/sp_vanilla_uniform_prior.py` | `results/sp_vanilla_uniform.json` | `results.alpha_0.15.overall_mean` | 1.309 |
 | 1 | SP vanilla, $\alpha=0.05$ | `analysis/vanilla_pr_two_alphas.py` | `results/vanilla_pr_two_alphas.json` | `results.alpha_0.05.overall_mean` | 1.072 |
 | 2 | SP vanilla, $\alpha=0.15$ | `analysis/vanilla_pr_two_alphas.py` | `results/vanilla_pr_two_alphas.json` | `results.alpha_0.15.overall_mean` | 0.923 |
 | 3 | SP + lanes only | `analysis/sp_tune_three_ov.py` | `results/sp_tune_three_ov.json` | `variants.lanes_only.overall_mean` | 0.916 |
 | 4 | SP + speed only | `analysis/sp_tune_three_ov.py` | `results/sp_tune_three_ov.json` | `variants.speed_only.overall_mean` | 0.870 |
 | 5 | SP + both | `analysis/sp_tune_three_ov.py` | `results/sp_tune_three_ov.json` | `variants.both.overall_mean` | 0.869 |
 | 6 | SP + both, $\alpha$ fixed | `analysis/sp_tune_alpha005_fixed.py` | `results/sp_tune_alpha005_fixed.json` | `overall_mean` | 1.002 |
+| 6a | TP uniform prior, $\beta=\rho=0.15$ | `analysis/tp_vanilla_uniform_prior.py` | `results/tp_vanilla_uniform.json` | `results.new_upper_bound.overall_mean` | 1.311 |
 | 7 | TP vanilla, $\beta=0.102, \rho=0.101$ | `analysis/tp_eval_calibrated.py` | `results/tp_eval_calibrated.json` | `overall_mean` | 1.041 |
 | 8 | TP vanilla, $\beta=\rho=0.15$ | `analysis/tp_two_betas.py` | `results/tp_two_betas.json` | `results.beta_0.15.overall_mean` | 0.984 |
 | 9 | TP + lanes only | `analysis/tp_tune_three_ov.py` | `results/tp_tune_three_ov.json` | `variants.lanes_only.overall_mean` | 0.962 |
-| 10 | TP + speed only | `analysis/tp_tune_three_ov.py` | `results/tp_tune_three_ov.json` | `variants.speed_only.overall_mean` | (in progress) |
-| 11 | TP + both | `analysis/tp_tune_three_ov.py` | `results/tp_tune_three_ov.json` | `variants.both.overall_mean` | (in progress) |
+| 10 | TP + speed only | `analysis/tp_tune_three_ov.py` | `results/tp_tune_three_ov.json` | `variants.speed_only.overall_mean` | 0.930 |
+| 11 | TP + both | `analysis/tp_tune_both_only.py` | `results/tp_tune_both_only.json` | `variants.both.overall_mean` | 0.929 |
 | 12 | TP + both, $(\beta,\rho)$ fixed | `analysis/tp_tune_calibrated_fixed.py` | `results/tp_tune_calibrated_fixed.json` | `overall_mean` | 0.970 |
+| 12a | Old TP uniform prior, $\alpha=\beta=0.15$ | `analysis/tp_vanilla_uniform_prior.py` | `results/tp_vanilla_uniform.json` | `results.old_upper_bound.overall_mean` | 1.309 |
+| 13 | Old TP vanilla, $\alpha=0.05, \beta=0.15$ | `analysis/tp_old_form_eval.py` | `results/tp_old_form_eval.json` | `results.alpha_0.05.overall_mean` | 1.058 |
+| 14 | Old TP vanilla, $\alpha=\beta=0.15$ | `analysis/tp_old_form_eval.py` | `results/tp_old_form_eval.json` | `results.alpha_0.15.overall_mean` | 0.908 |
+| 15 | Old TP + lanes only | `analysis/tp_old_form_tune_ov.py` | `results/tp_old_form_tune_ov.json` | `variants.lanes_only.overall_mean` | 0.901 |
+| 16 | Old TP + speed only | `analysis/tp_old_form_tune_ov.py` | `results/tp_old_form_tune_ov.json` | `variants.speed_only.overall_mean` | 0.857 |
+| 17 | Old TP + both | `analysis/tp_old_form_tune_ov.py` | `results/tp_old_form_tune_ov.json` | `variants.both.overall_mean` | 0.856 |
 
 Best parameter values reported (for the additive rows):
 
 | # | Parameters at optimum |
 |---|----------------------|
-| 3 | $\alpha=0.150$, $\alpha_l=+0.337$ |
-| 4 | $\alpha=0.150$, $\alpha_s=+2.859$ |
-| 5 | $\alpha=0.150$, $\alpha_s=+2.674$, $\alpha_l=+0.169$ |
-| 6 | $\alpha=0.050$ (fixed), $\alpha_s=+2.774$, $\alpha_l=+0.243$ |
-| 9 | $\beta=\rho=0.150$, $\alpha_l=+1.875$ |
+| 3 | $\alpha=0.15$, $\alpha_l=+0.337$ |
+| 4 | $\alpha=0.15$, $\alpha_s=+2.859$ |
+| 5 | $\alpha=0.15$, $\alpha_s=+2.674$, $\alpha_l=+0.169$ |
+| 6 | $\alpha=0.05$ (fixed), $\alpha_s=+2.774$, $\alpha_l=+0.243$ |
+| 9 | $\beta=\rho=0.15$, $\alpha_l=+1.875$ |
+| 10 | $\beta=\rho=0.15$, $\alpha_s=+5.136$ |
+| 11 | $\beta=\rho=0.15$, $\alpha_s=+4.621$, $\alpha_l=+0.458$ |
 | 12 | $\beta=0.102$, $\rho=0.101$ (fixed), $\alpha_s=+2.816$, $\alpha_l=+0.209$ |
+| 15 | $\alpha=\beta=0.15$, $\alpha_l=+0.340$ |
+| 16 | $\alpha=\beta=0.15$, $\alpha_s=+2.839$ |
+| 17 | $\alpha=\beta=0.15$, $\alpha_s=+2.655$, $\alpha_l=+0.167$ |
 
 ## 5. How to run
 
@@ -152,6 +165,16 @@ python analysis/tp_tune_three_ov.py
 
 # TP at (beta=0.102, rho=0.101) fixed, tune (alpha_s, alpha_l) (row 12). ~4 h.
 python analysis/tp_tune_calibrated_fixed.py
+
+# Uniform-prior (no-data) baselines for SP and both TP forms (rows 0a, 6a, 12a). ~5 min.
+python analysis/sp_vanilla_uniform_prior.py
+python analysis/tp_vanilla_uniform_prior.py
+
+# Old-form (classical PageRank) TP vanilla evaluations (rows 13, 14). ~30 min.
+python analysis/tp_old_form_eval.py
+
+# Old-form TP three-way road-type tuning (rows 15, 16, 17). ~12 h with 5 starts.
+python analysis/tp_old_form_tune_ov.py
 ```
 
 ### CHPC (Granite)

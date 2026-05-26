@@ -38,8 +38,7 @@
 
 \begin{document}
 
-\title{Two-Phase PageRank Pipeline}
-\subtitle{GPS map-matching, diffusion smoothing, and chain evaluation}
+\title{A Markov Chain Pipeline for Link-Level Urban Traffic}
 
 \author{Anonymous}
 \affiliation{%
@@ -51,28 +50,25 @@
 \renewcommand{\shortauthors}{Anonymous}
 
 \begin{abstract}
-We fit a calibrated, per-link model of urban traffic on a
+We fit calibrated Markov chains to urban traffic on a
 $99{,}716$-link metropolitan road network using $30$~days of
-probe GPS trajectories. The pipeline map-matches the raw fixes
-with the Newson-Krumm hidden Markov matcher~\cite{newson2009hmm},
-accumulates a sparse popularity matrix
+probe GPS. Raw GPS fixes are projected onto the network with
+the hidden Markov map-matcher of Newson and
+Krumm~\cite{newson2009hmm}, run through the Leuven Map-Matching
+library~\cite{meert2018hmm,leuvenmapmatching}; accumulated into
+a sparse popularity matrix
 $C \in \mathbb{Z}_{\ge 0}^{T \times N}$ with $T = 8{,}640$
-five-minute bins, and smooths each row of $C$ by one step of
-graph diffusion~\cite{shuman2013gsp} at a strength calibrated
-to the empirical cross-week noise floor of the corpus. The
-smoothed prior then drives a two-phase
-{PageRank} chain that decomposes a
-random walk into a peak-seeking up phase of geometric length
-$L_{\uparrow} \sim \textsf{Geo}(\beta)$ and a
-destination-seeking down phase
-$L_{\downarrow} \sim \textsf{Geo}(\rho)$, with $(\beta, \rho)$
-fit from the empirical trip-length distribution of the corpus
-rather than chosen by hand. On a random sample of evaluation
-bins the two-phase chain reconstructs its own input within
-roughly $73\%$ Top-$100$ relative error on the busiest links and
-forecasts the next week's signal at the level of the cross-week
-noise floor; both numbers improve on the single-phase and naive
-baselines.
+five-minute bins; and smoothed by one step of graph
+diffusion~\cite{shuman2013gsp} at a strength calibrated to the
+empirical cross-week noise floor of the corpus. The smoothed
+prior drives a Markov chain on the road graph whose parameters
+are fit from the corpus rather than chosen by hand: a damping
+rate from the empirical trip-length distribution, and
+road-type transition weights (speed limit, lane count) from
+gradient descent. On an $840$-bin evaluation sample
+($120$ random bins per day of the week), the road-type
+calibration reduces the chain's mean per-link relative error
+against a uniform-transition baseline.
 \end{abstract}
 
 %% CCS concepts. Placeholders; final values must be generated at
@@ -107,17 +103,29 @@ baselines.
 
 \section{Introduction}
 
-The two-phase {PageRank} chain operates on a road graph and consumes
-a per-link distribution $E_b \in \mathbb{R}^N$ summarizing how often
-each road segment is used during a chosen time window. Producing a
-clean $E_b$ from raw GPS data requires three steps: matching noisy
-trajectories to network edges, binning the matched fixes into a
-sparse popularity matrix $C \in \mathbb{Z}_{\ge 0}^{T \times N}$ whose entry
-$C_{b,i}$ counts distinct trips on link $i$ in bin $b$, and smoothing
-each row of $C$ before it enters the chain. The following sections
-cover these steps in order, then define the chain as a
-column-stochastic Markov operator and report its evaluation against
-held-out data.
+Estimating how vehicle traffic distributes across the individual
+road links of a metropolitan area is a basic input for routing,
+control, and incident analysis. Doing it at the resolution of
+\emph{every link} from probe GPS alone is harder than it looks:
+coverage is sparse and uneven, the network has tens of thousands
+of edges, and most per-bin per-link cells contain no observations
+at all. We study the problem on a $99{,}716$-link road network of
+Salt Lake City using $30$ days of probe trajectories.
+
+The approach is a Markov chain on the road graph driven by a
+per-link prior $E_b \in \mathbb{R}^N$ assembled end-to-end from
+the raw data: GPS fixes are projected onto the network with the
+hidden Markov matcher of Newson and Krumm~\cite{newson2009hmm}
+(in the Leuven
+implementation~\cite{meert2018hmm,leuvenmapmatching} that we run),
+aggregated into a sparse popularity matrix
+$C \in \mathbb{Z}_{\ge 0}^{T \times N}$ over $5$-minute bins, and
+smoothed by graph diffusion~\cite{shuman2013gsp} at a strength
+fit from the empirical cross-week noise floor of the corpus. The
+chain's damping rate and road-type transition weights (speed
+limit, lane count) are fit from the corpus rather than chosen by
+hand. The following sections cover these steps in order, define
+the chain, and report its evaluation.
 
 \section{Related work}
 \label{sec:related-work}
@@ -262,7 +270,7 @@ dashed); gray fall outside.}
 \subsection{Map-matching}
 \label{sec:mapmatching}
 
-\hamid{We project the raw GPS fixes onto the road network with the
+We project the raw GPS fixes onto the road network with the
 Leuven implementation~\cite{meert2018hmm,leuvenmapmatching} of
 the hidden Markov map-matcher of Newson and
 Krumm~\cite{newson2009hmm}. The matcher models the
@@ -276,8 +284,7 @@ pruning radius \texttt{max\_dist} $= 400$~m, the matcher's
 default upper bound on emission distance), compute the standard
 deviation of the per-fix residuals over the surviving fixes,
 and pick the smallest $\sigma$ at which the declared emission
-std is no longer smaller than the measured one.}
-\jeff{mention their 4.07~m and mention what we did}
+std is no longer smaller than the measured one.
 
 \begin{table}[H]
 \centering
@@ -595,11 +602,9 @@ Finally, normalize each row to a probability distribution:
 \end{equation}
 The result $\tilde E_b \in \mathbb{R}^{N}$ is the
 \emph{diffused prior}: dense, positive on every road link, and
-preserving the order of the heaviest links (the top-$100$ link
-sets of $E_b$ and $\tilde E_b$ overlap on roughly $90\%$ of
-links across the corpus). $\tilde E_b$ is used as an
-alternative to the raw $E_b$ throughout the evaluation of
-\cref{sec:evaluation}.
+preserving the order of the heaviest links across the corpus.
+$\tilde E_b$ is used as an alternative to the raw $E_b$
+throughout the evaluation of \cref{sec:evaluation}.
 
 \paragraph{Choosing $\gamma$ from the noise floor.}
 The diffusion strength $\gamma$ is not free. We pick it so that
@@ -811,16 +816,12 @@ r_i \;=\; \frac{|t_i - p_i|}{t_i + \varepsilon},
 \end{equation}
 which is dimensionless: numerator and denominator are both in
 probability units, so $r_i$ measures error as a fraction of the
-truth itself. We aggregate $r_i$ over two index sets:
-\begin{align}
-\textsf{MRE}_{\textsf{top}\text{-}100} &= \frac{1}{100}
-   \sum_{i \in \mathcal{T}_{100}(t)} r_i,\\
-\textsf{MRE}_{\textsf{overall}}        &= \frac{1}{N} \sum_{i = 1}^{N} r_i,
-\end{align}
-where $\mathcal{T}_{100}(t)$ is the set of $100$ link indices with
-the largest values of $t$. The Top-$100$ MRE focuses on the
-heavy-traffic head of the distribution, the overall MRE averages
-across every link in the network. The regularizer $\varepsilon$ is
+truth itself. We aggregate $r_i$ across every link in the
+network:
+\begin{equation}
+\textsf{MRE}_{\textsf{overall}} \;=\; \frac{1}{N} \sum_{i = 1}^{N} r_i.
+\end{equation}
+The regularizer $\varepsilon$ is
 needed only when $t$ has links with $t_i = 0$: it prevents division
 by zero and acts as a numerical floor that controls how much
 empty-truth links inflate the average. We report
@@ -853,15 +854,12 @@ $8{,}640$ bins of the corpus.}
 statistic & value \\
 \midrule
 total matched fixes & $58{,}410{,}362$ \\
-number of bins      & $8{,}640$ \\
-zero-fix bins       & $60$ \\
 \midrule
-min                 & $0$ \\
-$10$th percentile   & $1{,}372$ \\
-median              & $4{,}791$ \\
-mean                & $6{,}729$ \\
+min                 & $295$ \\
+$10$th percentile   & $1{,}405$ \\
+median              & $4{,}823$ \\
+mean                & $6{,}760$ \\
 $90$th percentile   & $14{,}746$ \\
-$99$th percentile   & $17{,}303$ \\
 max                 & $20{,}881$ \\
 \bottomrule
 \end{tabular}
@@ -884,17 +882,14 @@ pairs:
         $= E_b(t + 7~\text{days})$, prediction $= \hat v(t)$.
         Reports how well the chain, fed this week's prior,
         predicts next week's empirical signal.
-  \item \textbf{dataset $\to$ model} (reconstruct this week):
-        truth $= E_b(t)$, prediction $= \hat v(t)$. Reports how
-        well the chain reconstructs its own input bin.
 \end{enumerate}
-With the diffused prior, the same three comparisons replace
+With the diffused prior, the same two comparisons replace
 $E_b$ by $\tilde E_b$ on \emph{both sides}: the truth vector,
 the prediction vector when the prediction is itself a prior
 (comparison 1), and the chain input that produces $\hat v(t)$
-(comparisons 2 and 3) are all diffused before the MRE is taken.
-This keeps every comparison apples-to-apples within a single
-choice of prior.
+(comparison 2) are all diffused before the MRE is taken. This
+keeps every comparison apples-to-apples within a single choice
+of prior.
 
 \paragraph{Sampling protocol.}
 For each of the seven days of the week (Mon, $\ldots$, Sun) we
@@ -1005,43 +1000,32 @@ eps configurations) gives the numbers in
 $840$ target bins ($120$ per weekday, seed $7$). Conventions
 match \cref{tab:eval}.}
 \label{tab:single-phase}
-\scriptsize
-\setlength{\tabcolsep}{3pt}
+\setlength{\tabcolsep}{6pt}
 \renewcommand{\arraystretch}{1.30}
-\begin{tabular}{@{}l@{\hspace{4pt}}cc@{\hspace{4pt}}cc@{\hspace{4pt}}cc@{}}
+\begin{tabular}{@{}lccc@{}}
 \toprule
-& \multicolumn{2}{c}{\shortstack[c]{No diffusion\\$\varepsilon\!=\!10^{-6}$}}
-& \multicolumn{2}{c}{\shortstack[c]{Diffused\\$\varepsilon\!=\!10^{-6}$}}
-& \multicolumn{2}{c}{\shortstack[c]{Diffused\\$\varepsilon\!=\!0$}} \\
-\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
-Comparison & T-$100$ & Ov. & T-$100$ & Ov. & T-$100$ & Ov. \\
+Comparison
+& \shortstack[c]{No diffusion\\$\varepsilon\!=\!10^{-6}$}
+& \shortstack[c]{Diffused\\$\varepsilon\!=\!10^{-6}$}
+& \shortstack[c]{Diffused\\$\varepsilon\!=\!0$} \\
 \midrule
-1. dataset$\to$dataset (next week) & $0.626$ & $5.82$ & $0.586$ & $0.68$ & $0.586$ & $0.90$ \\
-2. dataset$\to$model (forecast)    & $0.841$ & $8.70$ & $0.813$ & $1.07$ & $0.814$ & $1.46$ \\
-3. dataset$\to$model (reconstruct) & $0.792$ & $8.07$ & $0.761$ & $0.90$ & $0.762$ & $1.22$ \\
+1. dataset$\to$dataset (next week) & $5.82$ & $0.68$ & $0.90$ \\
+2. dataset$\to$model (forecast)    & $8.70$ & $1.07$ & $1.46$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Three readings of \cref{tab:single-phase}, paired against the
+Two readings of \cref{tab:single-phase}, paired against the
 two-phase numbers in \cref{tab:eval}.
 
 \paragraph{The forecast loses to the noise floor.}
-Forecast Top-$100$ is $0.813$, well above the noise-floor
-Top-$100$ of $0.586$. The single-phase chain therefore fails the
-contract's pass criterion that forecast must not be worse than
-last-week-at-the-same-slot. The two-phase chain in
-\cref{tab:eval} is at forecast Top-$100$ $= 0.788$, only
-marginally better than the single-phase baseline at this
-evaluation.
-
-\paragraph{Reconstruction is comparable.}
-The reconstruction comparison probes whether the chain returns
-the input distribution after running to steady state. With the
-single-phase chain at $p = 0.0508$ the reconstruction Top-$100$
-is $0.761$. The two-phase chain on the same prior reaches
-reconstruction Top-$100$ $= 0.729$, only a small improvement
-over the single-phase baseline.
+Forecast Overall MRE is $1.07$ against a noise floor of $0.68$
+(diffused, $\varepsilon = 10^{-6}$). The single-phase chain
+therefore fails the contract's pass criterion that forecast
+must not be worse than last-week-at-the-same-slot. The
+two-phase chain in \cref{tab:eval} reaches forecast Overall MRE
+of $1.04$ on the same comparison, only marginally better than
+the single-phase baseline.
 
 \paragraph{Why the single-phase mixes too much.}
 At $p = 0.0508$ the chain takes on average
@@ -1056,9 +1040,8 @@ relaxed away from $E_b$ on the heavy links. The two-phase split
 absorbs that mixing into the down phase ($\rho = 0.101$ leak)
 while keeping the up phase close to $E_b$ ($\beta = 0.102$ leak,
 applied on $P^{\uparrow}$ rather than the uniform $P$), which is
-why the two-phase reconstruction in \cref{tab:eval} preserves the
-heavy-traffic head where the single-phase reconstruction does
-not. The next section formalizes this two-phase chain.
+why the two-phase chain in \cref{tab:eval} preserves the
+heavy-traffic head where the single-phase baseline does not. The next section formalizes this two-phase chain.
 
 \section{Two-phase {PageRank} chain}
 \label{sec:model}
@@ -1432,10 +1415,9 @@ aggregation only.
 \label{sec:experiments}
 
 The evaluation framework
-(\cref{sec:evaluation-framework}) defines the metric (MRE
-on top-$100$ and overall), the three comparisons
-(dataset-to-dataset, forecast, reconstruct), and the
-$840$-bin sampling protocol used by every table below.
+(\cref{sec:evaluation-framework}) defines the metric (Overall
+MRE), the two comparisons (dataset-to-dataset, forecast), and
+the $840$-bin sampling protocol used by every table below.
 
 \subsection{Evaluation results}
 \label{sec:evaluation}
@@ -1450,60 +1432,46 @@ is $10^{-7}$, maximum $300$ iterations.
 
 \begin{table}[H]
 \centering
-\caption{Mean relative error of the two-phase chain across $840$
+\caption{Overall MRE of the two-phase chain across $840$
 random target bins ($120$ per day of the week) on the SLC corpus.
-$\beta=0.102, \rho=0.101$. Lower is better. ``T-$100$'' = Top-$100$
-MRE, ``Ov.'' = Overall MRE. ``No diffusion'' uses the raw prior
-$E_b$ of \cref{sec:counting}; ``Diffused'' uses the diffused prior
-$\tilde E_b$ of \cref{sec:diffusion}.}
+$\beta=0.102, \rho=0.101$. Lower is better. ``No diffusion''
+uses the raw prior $E_b$ of \cref{sec:counting}; ``Diffused''
+uses the diffused prior $\tilde E_b$ of \cref{sec:diffusion}.}
 \label{tab:eval}
-\scriptsize
-\setlength{\tabcolsep}{3pt}
+\setlength{\tabcolsep}{6pt}
 \renewcommand{\arraystretch}{1.30}
-\begin{tabular}{@{}l@{\hspace{4pt}}cc@{\hspace{4pt}}cc@{\hspace{4pt}}cc@{}}
+\begin{tabular}{@{}lccc@{}}
 \toprule
-& \multicolumn{2}{c}{\shortstack[c]{No diffusion\\$\varepsilon\!=\!10^{-6}$}}
-& \multicolumn{2}{c}{\shortstack[c]{Diffused\\$\varepsilon\!=\!10^{-6}$}}
-& \multicolumn{2}{c}{\shortstack[c]{Diffused\\$\varepsilon\!=\!0$}} \\
-\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
-Comparison & T-$100$ & Ov. & T-$100$ & Ov. & T-$100$ & Ov. \\
+Comparison
+& \shortstack[c]{No diffusion\\$\varepsilon\!=\!10^{-6}$}
+& \shortstack[c]{Diffused\\$\varepsilon\!=\!10^{-6}$}
+& \shortstack[c]{Diffused\\$\varepsilon\!=\!0$} \\
 \midrule
-1. dataset$\to$dataset (next week) & $0.626$ & $5.82$ & $0.586$ & $0.68$ & $0.586$ & $0.90$ \\
-2. dataset$\to$model (forecast)    & $0.818$ & $8.53$ & $0.788$ & $1.04$ & $0.789$ & $1.42$ \\
-3. dataset$\to$model (reconstruct) & $\mathbf{0.763}$ & $\mathbf{7.82}$ & $\mathbf{0.729}$ & $\mathbf{0.86}$ & $\mathbf{0.730}$ & $\mathbf{1.16}$ \\
+1. dataset$\to$dataset (next week) & $5.82$ & $\mathbf{0.68}$ & $0.90$ \\
+2. dataset$\to$model (forecast)    & $8.53$ & $1.04$ & $1.42$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Three readings of the table.
-
-\paragraph{Reconstruction is comparable to forecast.}
-Row $3$ has Top-$100$ MRE $\approx 0.73$, comparable to but
-slightly below the forecast in row $2$ ($\approx 0.79$). The
-chain tracks the heavy-traffic head of the input only loosely:
-the steady state recovers the input distribution on the
-top-$100$ links to within $\sim\!73\%$.
+Two readings of the table.
 
 \paragraph{Forecast sits above the noise floor.}
-Row $2$ forecast Top-$100$ is $\approx 0.79$, above the noise
-floor of row $1$ ($\approx 0.59$). The chain's forecast of next
-week's signal is therefore worse than last-week-at-the-same-slot.
-Since the chain has no temporal dynamics (no time index in $M_b$
-except through the prior of the target bin), improving forecast
-performance would require additional signal: weekly periodicity,
-multi-bin context, or external covariates, none of which are part
-of the current model.
+Row $2$ forecast Overall MRE is $1.04$, above the noise floor of
+row $1$ at $0.68$. The chain's forecast of next week's signal is
+therefore worse than last-week-at-the-same-slot. Since the chain
+has no temporal dynamics (no time index in $M_b$ except through
+the prior of the target bin), improving forecast performance
+would require additional signal: weekly periodicity, multi-bin
+context, or external covariates, none of which are part of the
+current model.
 
 \paragraph{Empty-link contribution to the overall MRE.}
-The overall MRE without the regularizer inflates to $\sim\!8$ in
+The Overall MRE without the regularizer inflates to $\sim\!8$ in
 the leftmost column because the many empty links contribute
 $\frac{|p_i|}{\varepsilon}$ each; $\varepsilon = 10^{-6}$ caps
 this contribution but does not eliminate it. With every truth
-value positive, the overall MRE drops to $0.67$--$1.37$, a range
+value positive, the Overall MRE drops to $0.67$--$1.37$, a range
 in which the metric is interpretable as a relative error average.
-The Top-$100$ MRE is essentially insensitive to either the prior
-or $\varepsilon$, as expected: heavy-traffic links have
-$t_i \gg \varepsilon$ in every configuration.
 
 \subsection{Additive ladder: damping and road-type tuning on the whole network}
 \label{sec:ladder}
@@ -1581,36 +1549,73 @@ variant & parameters & Ov.\ MRE \\
 \hline\hline
 \multicolumn{3}{|l|}{\emph{Single-phase}} \\
 \hline
+uniform prior                        & $\alpha\!=\!0.15$, $E_b\!=\!\mathbf{1}/N$                       & $1.309$ \\
+\hline
 vanilla                              & $\alpha\!=\!0.05$                                                & $1.072$ \\
 \hline
 vanilla                              & $\alpha\!=\!0.15$                                                & $0.923$ \\
 \hline
-$+$ lanes only                       & $\alpha\!=\!0.150$, $\alpha_l\!=\!+0.337$                       & $0.916$ \\
+$+$ lanes only                       & $\alpha\!=\!0.15$, $\alpha_l\!=\!+0.337$                       & $0.916$ \\
 \hline
-$+$ speed only                       & $\alpha\!=\!0.150$, $\alpha_s\!=\!+2.859$                       & $0.870$ \\
+$+$ speed only                       & $\alpha\!=\!0.15$, $\alpha_s\!=\!+2.859$                       & $0.870$ \\
 \hline
-$+$ both                             & $\alpha\!=\!0.150$, $\alpha_s\!=\!+2.674$, $\alpha_l\!=\!+0.169$ & $0.869$ \\
+$+$ both                             & $\alpha\!=\!0.15$, $\alpha_s\!=\!+2.674$, $\alpha_l\!=\!+0.169$ & $0.869$ \\
 \hline
 \makecell[tl]{$+$ both,\\ $\alpha$ fixed} & $\alpha\!=\!0.05$; $\alpha_s\!=\!+2.774$, $\alpha_l\!=\!+0.243$ & $1.002$ \\
 \hline\hline
 \multicolumn{3}{|l|}{\emph{Two-phase}} \\
 \hline
+uniform prior                        & $\beta\!=\!\rho\!=\!0.15$, $E_b\!=\!\mathbf{1}/N$               & $1.311$ \\
+\hline
 vanilla                              & $\beta\!=\!0.102$, $\rho\!=\!0.101$                              & $1.041$ \\
 \hline
 vanilla                              & $\beta\!=\!\rho\!=\!0.15$                                        & $0.984$ \\
 \hline
-$+$ lanes only                       & $\beta\!=\!0.150$, $\rho\!=\!0.150$, $\alpha_l\!=\!+1.875$       & $0.962$ \\
+$+$ lanes only                       & $\beta\!=\!0.15$, $\rho\!=\!0.15$, $\alpha_l\!=\!+1.875$       & $0.962$ \\
 \hline
-$+$ speed only                       & $\beta,\rho,\alpha_s$ tuned                                      & \rule{1.5em}{0.3pt} \\
+$+$ speed only                       & $\beta\!=\!0.15$, $\rho\!=\!0.15$, $\alpha_s\!=\!+5.136$       & $0.930$ \\
 \hline
-$+$ both                             & $\beta,\rho,\alpha_s,\alpha_l$ tuned                             & \rule{1.5em}{0.3pt} \\
+$+$ both                             & $\beta\!=\!0.15$, $\rho\!=\!0.15$, $\alpha_s\!=\!+4.621$, $\alpha_l\!=\!+0.458$ & $0.929$ \\
 \hline
-\makecell[tl]{$+$ both,\\ $(\beta,\rho)$ fixed} & $(\beta,\rho)\!=\!(0.102,0.101)$;\ $\alpha_s,\alpha_l$ tuned & \rule{1.5em}{0.3pt} \\
+\makecell[tl]{$+$ both,\\ $(\beta,\rho)$ fixed} & $(\beta,\rho)\!=\!(0.102,0.101)$;\ $\alpha_s\!=\!+2.816$, $\alpha_l\!=\!+0.209$ & $0.970$ \\
+\hline\hline
+\multicolumn{3}{|l|}{\color{blue}\emph{Two-phase, classical form (appendix)}} \\
+\hline
+\textcolor{blue}{uniform prior} & \textcolor{blue}{$\alpha\!=\!0.15$, $\beta\!=\!0.15$, $E_b\!=\!\mathbf{1}/N$} & \textcolor{blue}{$1.309$} \\
+\hline
+\textcolor{blue}{vanilla} & \textcolor{blue}{$\alpha\!=\!0.05$, $\beta\!=\!0.15$} & \textcolor{blue}{$1.058$} \\
+\hline
+\textcolor{blue}{vanilla} & \textcolor{blue}{$\alpha\!=\!0.15$, $\beta\!=\!0.15$} & \textcolor{blue}{$0.908$} \\
+\hline
+\textcolor{blue}{$+$ lanes only} & \textcolor{blue}{$\alpha\!=\!0.15$, $\beta\!=\!0.15$, $\alpha_l\!=\!+0.340$} & \textcolor{blue}{$0.901$} \\
+\hline
+\textcolor{blue}{$+$ speed only} & \textcolor{blue}{$\alpha\!=\!0.15$, $\beta\!=\!0.15$, $\alpha_s\!=\!+2.839$} & \textcolor{blue}{$0.857$} \\
+\hline
+\textcolor{blue}{$+$ both} & \textcolor{blue}{$\alpha\!=\!0.15$, $\beta\!=\!0.15$, $\alpha_s\!=\!+2.655$, $\alpha_l\!=\!+0.167$} & \textcolor{blue}{$0.856$} \\
 \hline
 \end{tabular}
 \end{table}
 
 \paragraph{Discussion.}
+
+
+\hamid{Collapsing the chain into a single block matrix
+(\cref{eq:M-block}) loses to single-phase PageRank on the full-network
+week-to-week prediction in \cref{tab:ladder-tuning}. The two models are
+not nested: single-phase is not recoverable as a special case of this
+two-phase form, so the loss is not an inference artefact but a
+structural one. The two-phase form only outperforms single-phase on the
+Sept-15 stadium cluster (\cref{tab:heldout-headline}), not on the whole
+network. The classical-form two-phase chain in \cref{app:tp-old-form},
+where the transition matrix and the teleportation vector are kept
+separate, leads both single-phase and the block-matrix two-phase on
+every ladder rung in our early runs. A second observation: every chain
+underperforms when $\alpha, \beta, \rho$ are pinned to the geometric-fit
+values of \cref{sec:beta-rho-calibration}; raising the teleportation
+coefficient toward the upper bound $0.15$ improves the prediction
+because more mass is placed on the prior $E_b$, and the prior, which is
+the same bin one week earlier after $\gamma$-diffusion, is itself a
+strong predictor of the target bin.}
 \rule{0pt}{6ex}
 \noindent
 \rule{0pt}{6ex}
@@ -1735,7 +1740,6 @@ single-phase, tuned       & $0.709$ & $0.826$ & $0.852$ & 1-stage Markov chain \
 two-phase, no dangling fix (v1) & $1.734$ & $2.160$ & $2.054$ & earlier two-phase variant \\
 two-phase, no $\gamma$-smoothing & $1.785$ & $2.249$ & $2.084$ & raw Laplace prior \\
 $d2d$ (last week's popularity, no chain) & $7.088$ & $8.918$ & $8.062$ & naive baseline \\
-climatology (non-event Saturday mean) & $17.51$ & $14.01$ & $11.39$ & worst predictor \\
 \bottomrule
 \end{tabular}}
 \end{table}
@@ -1746,14 +1750,11 @@ under the held-out protocol, by $0.031$ d2m on top-$10$,
 $0.075$ d2m on top-$20$, and $0.004$ d2m on top-$30$ relative
 to the single-phase chain. The remaining baselines tell a
 consistent story: the naive $d2d$ row uses last week's
-popularity and lands at the event-day noise floor;
-climatology averages over non-event Saturdays and is the worst
-predictor by far because the stadium cluster is by definition
-event-driven; the v1 chain without the dangling-link fix and
-the no-$\gamma$-smoothing variant both sit well above the tuned
-chains, showing that the dangling correction and the
-$\gamma$-smoothing component each earn their place in the
-pipeline.
+popularity and lands at the event-day noise floor; the v1
+chain without the dangling-link fix and the no-$\gamma$-smoothing
+variant both sit well above the tuned chains, showing that the
+dangling correction and the $\gamma$-smoothing component each
+earn their place in the pipeline.
 
 \begin{table}[H]
 \centering
@@ -1774,12 +1775,12 @@ outside $[-1, 1]$.''}
 cluster & $p$ & $\alpha_s$ & $\alpha_l$ &
         & $\alpha_s$ & $\alpha_l$ & $\beta$ & $\rho$ \\
 \midrule
-top-10 & $0.0100$ & $-2.39$ &  $+4.67$ &
-       & $+3.62$  & $-4.22$  & $0.1500$ & $0.0100$ \\
-top-20 & $0.0100$ & $-4.11$ &  $-0.62$ &
-       & $-6.43$  & $-1.03$  & $0.0100$ & $0.1049$ \\
-top-30 & $0.0100$ & $+47.36$ & $-15.03$ &
-       & $+77.20$ & $-33.47$ & $0.0100$ & $0.0100$ \\
+top-10 & $0.01$ & $-2.39$ &  $+4.67$ &
+       & $+3.62$  & $-4.22$  & $0.15$ & $0.01$ \\
+top-20 & $0.01$ & $-4.11$ &  $-0.62$ &
+       & $-6.43$  & $-1.03$  & $0.01$ & $0.1049$ \\
+top-30 & $0.01$ & $+47.36$ & $-15.03$ &
+       & $+77.20$ & $-33.47$ & $0.01$ & $0.01$ \\
 \bottomrule
 \end{tabular}}
 \end{table}
@@ -1987,4 +1988,63 @@ Xiao Liang, Jichang Zhao, Li Dong, and Ke Xu.
 
 \end{thebibliography}
 
+
+
+\appendix
+\section{Appendix: classical-form two-phase chain}
+\label{app:tp-old-form}
+
+\subsection{Definition}
+
+Let $P_{cs}$ be the column-stochastic out-adjacency of the directed road
+network (each column of $P_{cs}$ sums to one and represents the
+distribution of next-link probabilities out of a given source link), and
+let $E_b$ be the diffused popularity prior at the source bin. We build
+the $2N \times 2N$ block transition
+
+\begin{equation}
+M_{2N} \;=\;
+\begin{bmatrix}
+(1-\beta)\, P_{cs} & 0 \\[3pt]
+\beta\, I          & P_{cs}
+\end{bmatrix},
+\qquad
+E_{2N} \;=\;
+\begin{bmatrix} E_b \\[3pt] 0 \end{bmatrix}.
+\label{eq:tp-old-block}
+\end{equation}
+
+$M_{2N}$ is column-stochastic, acting directly on probability vectors:
+from any link in the up phase, a fraction $(1-\beta)$ of its mass follows
+the topology within the up phase and a fraction $\beta$ commits to the
+same link in the down phase; once in the down phase, mass keeps following
+the topology with no internal restart. The chain iterates
+
+\begin{equation}
+v^{(k+1)} \;=\; (1-\alpha)\, M_{2N}\, v^{(k)} \;+\; \alpha\, E_{2N},
+\label{eq:tp-old-iter}
+\end{equation}
+
+where $\alpha \in (0,1)$ is the global teleportation rate. Component-wise:
+
+\begin{align}
+v_{up}^{(k+1)}   &= (1-\alpha)(1-\beta)\, P_{cs}\, v_{up}^{(k)} \;+\; \alpha\, E_b, \\
+v_{down}^{(k+1)} &= (1-\alpha)\,\beta\, v_{up}^{(k)} \;+\; (1-\alpha)\, P_{cs}\, v_{down}^{(k)}.
+\end{align}
+
+Mass lost through dangling nodes (links with no out-edges) is reinjected
+through $E_b$ at each step so the total $\|v^{(k)}\|_1 = 1$ is preserved.
+The final prediction is $v = v_{up} + v_{down}$.
+
+\subsection{Estimation}
+
+The chain is evaluated and tuned on the same 840 calendar (t, t+7 days)
+pairs as the rest of \cref{tab:ladder-tuning}, with the same source and
+target taken from the diffused popularity matrix.
+
+ A \emph{tuned} rung fixes $\alpha = 0.15$ and minimizes
+Overall MRE by gradient descent over $\beta \in [0.01, 0.15]$ together
+with the road-type exponents $\alpha_s, \alpha_l$ (unbounded), in three
+modes that mirror the single-phase ladder: lanes-only, speed-only, and
+both.
 \end{document}

@@ -1,0 +1,26 @@
+{
+  "model": "vanilla SP with uniform teleportation prior u=1/N",
+  "n_pairs": 840,
+  "seed": 7,
+  "bpw": 120,
+  "alphas": [
+    0.15,
+    0.05
+  ],
+  "graph": "city_graph_full.json",
+  "target": "popularity_results_smoothed_osm_gamma020.npz",
+  "results": {
+    "alpha_0.15": {
+      "alpha": 0.15,
+      "overall_mean": 1.3093660802632947,
+      "overall_median": 1.1006073048285114,
+      "n_pairs": 840
+    },
+    "alpha_0.05": {
+      "alpha": 0.05,
+      "overall_mean": 1.3127651067921404,
+      "overall_median": 1.1022682647704887,
+      "n_pairs": 840
+    }
+  }
+}
