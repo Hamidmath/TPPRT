@@ -1,0 +1,73 @@
+\begin{table}[H]
+\centering
+\caption{Road-type tuning on the $840$ pairs, Overall MRE
+objective. Single-phase block: $\alpha \in [0.01,0.15]$,
+$\alpha_s,\alpha_l$ unbounded unless noted. Two-phase block:
+$\beta, \rho \in [0.01,0.15]$, $\alpha_s,\alpha_l$ unbounded
+unless noted. Vanilla rows are objective-independent; tuned rows
+report the operating point at the optimizer's solution.}
+\label{tab:ladder-tuning}
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{|p{0.22\linewidth}|p{0.50\linewidth}|r|}
+\hline
+variant & parameters & Ov.\ MRE \\
+\hline\hline
+\multicolumn{3}{|l|}{\emph{Single-phase}} \\
+\hline
+uniform prior                        & $\alpha\!=\!0.15$, $E_b\!=\!\mathbf{1}/N$                       & $1.309$ \\
+\hline
+vanilla                              & $\alpha\!=\!0.05$                                                & $1.072$ \\
+\hline
+vanilla                              & $\alpha\!=\!0.15$                                                & $0.923$ \\
+\hline
+$+$ lanes only                       & $\alpha\!=\!0.15$, $\alpha_l\!=\!+0.337$                       & $0.916$ \\
+\hline
+$+$ speed only                       & $\alpha\!=\!0.15$, $\alpha_s\!=\!+2.859$                       & $0.870$ \\
+\hline
+$+$ length only                      & $\alpha\!=\!0.15$, $\alpha_{\rm len}\!=\!+0.001$               & $0.923$ \\
+\hline
+$+$ both                             & $\alpha\!=\!0.15$, $\alpha_s\!=\!+2.674$, $\alpha_l\!=\!+0.169$ & $0.869$ \\
+\hline
+\makecell[tl]{$+$ both,\\ with len} & $\alpha\!=\!0.15$, $\alpha_s\!=\!+2.677$, $\alpha_l\!=\!+0.167$, $\alpha_{\rm len}\!=\!+0.009$ & $0.869$ \\
+\hline
+\makecell[tl]{$+$ both,\\ $\alpha$ fixed} & $\alpha\!=\!0.05$; $\alpha_s\!=\!+2.774$, $\alpha_l\!=\!+0.243$ & $1.002$ \\
+\hline\hline
+\multicolumn{3}{|l|}{\emph{Two-phase}} \\
+\hline
+uniform prior                        & $\beta\!=\!\rho\!=\!0.15$, $E_b\!=\!\mathbf{1}/N$               & $1.311$ \\
+\hline
+vanilla                              & $\beta\!=\!0.102$, $\rho\!=\!0.101$                              & $1.041$ \\
+\hline
+vanilla                              & $\beta\!=\!\rho\!=\!0.15$                                        & $0.984$ \\
+\hline
+$+$ lanes only                       & $\beta\!=\!0.15$, $\rho\!=\!0.15$, $\alpha_l\!=\!+1.875$       & $0.962$ \\
+\hline
+$+$ speed only                       & $\beta\!=\!0.15$, $\rho\!=\!0.15$, $\alpha_s\!=\!+5.136$       & $0.930$ \\
+\hline
+$+$ both                             & $\beta\!=\!0.15$, $\rho\!=\!0.15$, $\alpha_s\!=\!+4.621$, $\alpha_l\!=\!+0.458$ & $0.929$ \\
+\hline
+\makecell[tl]{$+$ both,\\ $(\beta,\rho)$ fixed} & $(\beta,\rho)\!=\!(0.102,0.101)$;\ $\alpha_s\!=\!+2.816$, $\alpha_l\!=\!+0.209$ & $0.970$ \\
+\hline\hline
+\multicolumn{3}{|l|}{\color{blue}\emph{Two-phase, classical form (appendix)}} \\
+\hline
+\textcolor{blue}{uniform prior} & \textcolor{blue}{$\alpha\!=\!0.15$, $\beta\!=\!0.15$, $E_b\!=\!\mathbf{1}/N$} & \textcolor{blue}{$1.309$} \\
+\hline
+\textcolor{blue}{vanilla} & \textcolor{blue}{$\alpha\!=\!0.05$, $\beta\!=\!0.15$} & \textcolor{blue}{$1.058$} \\
+\hline
+\textcolor{blue}{vanilla} & \textcolor{blue}{$\alpha\!=\!0.15$, $\beta\!=\!0.15$} & \textcolor{blue}{$0.908$} \\
+\hline
+\textcolor{blue}{$+$ lanes only} & \textcolor{blue}{$\alpha\!=\!0.15$, $\beta\!=\!0.15$, $\alpha_l\!=\!+0.340$} & \textcolor{blue}{$0.901$} \\
+\hline
+\textcolor{blue}{$+$ speed only} & \textcolor{blue}{$\alpha\!=\!0.15$, $\beta\!=\!0.15$, $\alpha_s\!=\!+2.839$} & \textcolor{blue}{$0.857$} \\
+\hline
+\textcolor{blue}{$+$ length only} & \textcolor{blue}{$\alpha\!=\!0.15$, $\beta\!=\!0.15$, $\alpha_{\rm len}\!=\!+0.001$} & \textcolor{blue}{$0.908$} \\
+\hline
+\textcolor{blue}{$+$ both} & \textcolor{blue}{$\alpha\!=\!0.15$, $\beta\!=\!0.15$, $\alpha_s\!=\!+2.655$, $\alpha_l\!=\!+0.167$} & \textcolor{blue}{$0.856$} \\
+\hline
+\textcolor{blue}{\makecell[tl]{$+$ both,\\ with len}} & \textcolor{blue}{$\alpha\!=\!0.15$, $\beta\!=\!0.15$, $\alpha_s\!=\!?$, $\alpha_l\!=\!?$, $\alpha_{\rm len}\!=\!?$} & \textcolor{blue}{\texttt{TBD}} \\
+\hline
+\textcolor{blue}{\makecell[tl]{$+$ both,\\ $(\alpha,\beta)$ fixed}} & \textcolor{blue}{$(\alpha,\beta)\!=\!(0.0508, 0.102)$;\ $\alpha_s\!=\!+2.830$, $\alpha_l\!=\!+0.237$} & \textcolor{blue}{$0.984$} \\
+\hline
+\end{tabular}
+\end{table}

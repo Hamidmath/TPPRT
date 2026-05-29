@@ -1,6 +1,6 @@
-"""Generate the single-phase histogram: empirical distribution of the
-per-trip total link count K_total = L_up + 1 + L_down, with the
-matched geometric overlay used by the single-phase PageRank baseline.
+"""Same as gen_single_phase_histogram.py, but with NO cut on K.
+The full empirical distribution is plotted out to max K, including
+the long right tail (up to K ~ 437 in this dataset).
 
 Mean and p match the KS analysis ("single (K_total)" row):
     E[K_total] = mean,
@@ -28,33 +28,39 @@ def main():
     mean = K.mean()
     p = 1.0 / (1.0 + mean)
 
-    xmax = int(np.percentile(K, 99.5)) + 1
-    bins = np.arange(0, xmax + 1)
+    PROB_FLOOR = 1e-6
+    BIN_W = 1
+    xmax_data = int(K.max()) + 1
+    bins = np.arange(0, xmax_data + BIN_W, BIN_W)
+    xmax_view = int(np.ceil(np.log(PROB_FLOOR / p) / np.log(1.0 - p)))
 
     fig, ax = plt.subplots(figsize=(7.2, 3.0), constrained_layout=True)
     ax.hist(
         K, bins=bins, density=True,
-        color="#1f6fb4", alpha=0.85,
-        edgecolor="white", linewidth=0.3,
-        label=f"empirical $K_{{\\mathrm{{total}}}}$ ($N={n:,}$ trips)",
+        color="#7a9ac0", alpha=1.0,
+        edgecolor="none", linewidth=0,
+        label=(f"$N={n:,}$\n"
+                f"$E[K]={mean:.2f}$"),
     )
-    k = np.arange(0, xmax + 1)
-    geom = (1.0 - p) ** k * p
+    # Geometric PMF aggregated into bins of width BIN_W, then divided
+    # by BIN_W so it overlays on density=True bars at the correct
+    # vertical scale.
+    bin_left = np.arange(0, xmax_data, BIN_W)
+    bin_prob = sum(((1.0 - p) ** (bin_left + offset) * p)
+                    for offset in range(BIN_W))
+    geom_density = bin_prob / BIN_W
     ax.plot(
-        k + 0.5, geom, color="black", linewidth=1.4,
-        label=f"Geom($p = {p:.4f}$), $1/(1+E[K])$",
+        bin_left + BIN_W / 2, geom_density, color="black", linewidth=1.4,
+        label=f"Geom($p = {p:.4f}$)",
     )
     ax.set_yscale("log")
-    ax.set_xlim(0, xmax)
-    ax.set_ylim(1e-5, 0.2)
+    ax.set_xlim(0, xmax_view)
+    ax.set_ylim(PROB_FLOOR, 0.2)
     ax.set_xlabel(r"$K_{\mathrm{total}}$ (total links per route)")
     ax.set_ylabel("probability")
     ax.grid(True, which="both", alpha=0.25, linewidth=0.4)
-    ax.set_title(
-        f"Single-phase route-length distribution  "
-        f"(all-K, $E[K]={mean:.2f}$, $p={p:.4f}$)",
-        fontsize=11,
-    )
+    ax.set_title("Single-phase route-length distribution",
+                  fontsize=11)
     ax.legend(loc="upper right", frameon=False, fontsize=10)
 
     out_pdf = os.path.join(HERE, "single_phase_histogram.pdf")
@@ -64,9 +70,9 @@ def main():
     print(f"wrote {out_pdf}")
     print(f"wrote {out_png}")
     print(f"N = {n:,}")
+    print(f"K range = [{K.min()}, {K.max()}]")
     print(f"E[K_total] = {mean:.4f}")
     print(f"p          = 1/(1+E[K]) = {p:.6f}")
-    print(f"damping d  = 1 - p      = {1 - p:.6f}")
 
 
 if __name__ == "__main__":

@@ -22,6 +22,14 @@ data/popularity_results_osm.bak_prev.npz
 data/popularity_results.bak_prev.npz
 data/popularity_results.npz.bak_dwell
 
+# Trip-ORIGINS matrix (built by analysis/build_origins_v2.py from data/map-match/noise3p5.json)
+data/origins_results.npz
+
+# Large external data drops not for the repo
+/Data_Summary.pdf
+/trips_processed.csv
+/wp-snapped-*.csv
+
 # Network visualizations (HTML, regenerable)
 data/network_*.html
 

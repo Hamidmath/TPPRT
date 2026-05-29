@@ -38,7 +38,7 @@
 
 \begin{document}
 
-\title{A Markov Chain Pipeline for Link-Level Urban Traffic}
+\title{A Full Metro-scale Time-Dependent Traffic Route Model}
 
 \author{Anonymous}
 \affiliation{%
@@ -50,25 +50,7 @@
 \renewcommand{\shortauthors}{Anonymous}
 
 \begin{abstract}
-We fit calibrated Markov chains to urban traffic on a
-$99{,}716$-link metropolitan road network using $30$~days of
-probe GPS. Raw GPS fixes are projected onto the network with
-the hidden Markov map-matcher of Newson and
-Krumm~\cite{newson2009hmm}, run through the Leuven Map-Matching
-library~\cite{meert2018hmm,leuvenmapmatching}; accumulated into
-a sparse popularity matrix
-$C \in \mathbb{Z}_{\ge 0}^{T \times N}$ with $T = 8{,}640$
-five-minute bins; and smoothed by one step of graph
-diffusion~\cite{shuman2013gsp} at a strength calibrated to the
-empirical cross-week noise floor of the corpus. The smoothed
-prior drives a Markov chain on the road graph whose parameters
-are fit from the corpus rather than chosen by hand: a damping
-rate from the empirical trip-length distribution, and
-road-type transition weights (speed limit, lane count) from
-gradient descent. On an $840$-bin evaluation sample
-($120$ random bins per day of the week), the road-type
-calibration reduces the chain's mean per-link relative error
-against a uniform-transition baseline.
+We describe how to train an urban traffic model on a full metropolitan road network, up to 5-minute resolution on a week-long model, starting from GPS probes representing 5\% of all traffic in that area over a 30-day period.  Building such a large model (about 100,000 links, and 2016 time windows for a week), presents many challenges.  First, the 5\% of all traffic (about 2.5 million trips) is still incredibly sparse on this scale.  This means it is essential to smooth out the data and error evaluation, and also not learn too many parameters at risk of over-fitting.  Second, because the scale is so large, to be able to predict feasible routes and not just static distributions, it is important we learn a PageRank-style model.  We demonstrate the model's ability for route forecasting around two changes in traffic behavior.  
 \end{abstract}
 
 %% CCS concepts. Placeholders; final values must be generated at
@@ -102,40 +84,59 @@ against a uniform-transition baseline.
 \maketitle
 
 \section{Introduction}
+A full metro-scale traffic model, we posit, should contain the following components.  
+(1)  It should consider traffic on each link of a road network.  Otherwise, it is not compatible with low-level route planning, actual map-matched GPS-traces.  
+(2)  It should be temporal, with a small resolution like 5 minutes, and spanning a week.  Traffic patterns are variable at this resolution level, due to commute and meal regularity.  The week long models are necessary for regular changes in behavior over that period.  
+(3)  It should be able to efficiently produce actual road-network routes mirroring GPS traces, starting in each time window.  These are necessary for producing realistic routes that can adapt to the environment for planning and forecasting.  The efficiency is necessary so this can be deployed in other AI infrastructure for generative modeling.  
+(4)  Finally, it should learn from and be trained on actual data so it can represent the true human behaviors and adapt if new data arises.  
 
-Estimating how vehicle traffic distributes across the individual
-road links of a metropolitan area is a basic input for routing,
-control, and incident analysis. Doing it at the resolution of
-\emph{every link} from probe GPS alone is harder than it looks:
-coverage is sparse and uneven, the network has tens of thousands
-of edges, and most per-bin per-link cells contain no observations
-at all. We study the problem on a $99{,}716$-link road network of
-Salt Lake City using $30$ days of probe trajectories.
+In this paper we demonstrate how to build such a system on the greater Salt Lake City metropolitan area.  This represents a cohesive and connected ecosystem with about 100,000 links.  We train this model on GPS tracing representing about 5\% of the traffic for the area for a 30 day period (about 2.5 million routes).  The scale of the data is large, but manageable by today's standards -- the real challenges is the sparsity.  After filtering and cleaning, only about 180 million GPS points remain; but at a 5-minute resolution with 2,016 time periods over a week, there are over 800 million links$\times$time-windows to model.  Even if we had a longer observation period or a higher percentage of routes, a similar challenge would remain since many routes are concentrated on busy thoroughfares and are peak times of the day.  The tail of density is extremely long. 
 
-The approach is a Markov chain on the road graph driven by a
-per-link prior $E_b \in \mathbb{R}^N$ assembled end-to-end from
-the raw data: GPS fixes are projected onto the network with the
-hidden Markov matcher of Newson and Krumm~\cite{newson2009hmm}
-(in the Leuven
-implementation~\cite{meert2018hmm,leuvenmapmatching} that we run),
-aggregated into a sparse popularity matrix
-$C \in \mathbb{Z}_{\ge 0}^{T \times N}$ over $5$-minute bins, and
-smoothed by graph diffusion~\cite{shuman2013gsp} at a strength
-fit from the empirical cross-week noise floor of the corpus. The
-chain's damping rate and road-type transition weights (speed
-limit, lane count) are fit from the corpus rather than chosen by
-hand. The following sections cover these steps in order, define
-the chain, and report its evaluation.
+We manage to effectively build a model satisfying this desiderata through several innovations.  Our baseline is a PageRank model that treats directed network links as graph vertices, and intersections model outgoing edges.  We then categorize links by speed and number of lanes, and use data to learn transition probabilities between edges that favor transitions to or from higher throughput roads.   However, routes typically move towards thoroughfares as they depart, and then move away from them as they reach their destination; so we design a two-phase PageRank that has separate transition probabilities as it gears up, and then speeds down.  Finally, when a route ends, PageRank ``teleports" to a random node to start the next walk; however, this does not reflect the pattern of route origins.  So we use our observations of route starting points to also inform this teleportation probability, akin to trust-rank models~\cite{}.  
+We demonstrate that each of these steps is necessary to build an effective learned model.  
+
+Another challenge is in a trustworthy evaluation.  Due to the data sparsity, even without a cross-validation split, it is not enough to directly predict the link density accuracy.  Across the 4 full weeks, only 3\% of links$\times$time have at least one observation in a week, and only 1\% have at least one observation in more than one week.  
+So we disperse the sparse observations we have using graph diffusion~\cite{shuman2013gsp}.  We show how to apply this in a controlled way so that for each full week of observation, each link$\times$time has non-zero measure, and the average relative change in value is less than the median number of difference in observations among the links$\times$time which have observations in more than two weeks.  That is, this diffusion makes the observations dense in a natural way that does not disrupt the data below the noise floor.  
+From here, we can evaluate the model by training on one week, and measuring on the next.  
+
+Ultimately, we demonstrate an efficient, fine-grain, and full model on a metro scale data set.  It produces natural temporally encoded routes, and its error is below the week-to-week variability of the diffused observations.  Moreover, we demonstrate on two scenarios (a large sporting event, and an accident-induced lane closure) how we can use it to effectively forecast heavy traffic and investigate what-if scenarios.  
+
+
+
+
+% Estimating how vehicle traffic distributes across the individual
+% road links of a metropolitan area is a basic input for routing,
+% control, and incident analysis. Doing it at the resolution of
+% \emph{every link} from probe GPS alone is harder than it looks:
+% coverage is sparse and uneven, the network has tens of thousands
+% of edges, and most per-bin per-link cells contain no observations
+% at all. We study the problem on a $99{,}716$-link road network of
+% Salt Lake City using $30$ days of probe trajectories.
+
+% The approach is a Markov chain on the road graph driven by a
+% per-link prior $E_b \in \mathbb{R}^N$ assembled end-to-end from
+% the raw data: GPS fixes are projected onto the network with the
+% hidden Markov matcher of Newson and Krumm~\cite{newson2009hmm}
+% (in the Leuven
+% implementation~\cite{meert2018hmm,leuvenmapmatching} that we run),
+% aggregated into a sparse popularity matrix
+% $C \in \mathbb{Z}_{\ge 0}^{T \times N}$ over $5$-minute bins, and
+% smoothed by graph diffusion~\cite{shuman2013gsp} at a strength
+% fit from the empirical cross-week noise floor of the corpus. The
+% chain's damping rate and road-type transition weights (speed
+% limit, lane count) are fit from the corpus rather than chosen by
+% hand. The following sections cover these steps in order, define
+% the chain, and report its evaluation.
 
 \section{Related work}
 \label{sec:related-work}
 
-The question this paper addresses is whether one can fit a
+This paper designs a method to fit a
 calibrated model of vehicle traffic at the resolution of
 \emph{every single road link} of an entire city
-($\sim 100{,}000$ links), using probe trajectories on a fixed
-road network, and validate the fit against held-out weeks and
-a held-out real-world intervention. The closest prior work
+($\sim 100{,}000$ links) at 5-minute temporal resolution over a week, using probe trajectories on a fixed
+road network.  
+The closest prior work
 falls into three groups: agent-based traffic simulators that
 take demand as an input rather than fit it from
 data~\cite{horni2016matsim, balmer2006matsim};
@@ -145,7 +146,7 @@ and PageRank-style random walks applied to urban networks for
 centrality or coarse congestion
 prediction~\cite{agryzkov2023nonlocal, wang2017pagerank, jiang2009ranking}.
 
-\paragraph{MATSim and agent-based traffic simulation.}
+%\paragraph{MATSim and agent-based traffic simulation.}
 The closest comparable effort in scope is
 MATSim~\cite{horni2016matsim, balmer2006matsim}, a long-running
 agent-based simulator that, given a synthetic population,
@@ -157,8 +158,7 @@ weeks. The two efforts complement rather than compete; we use
 the MATSim network model of Salt Lake City as our graph, but
 the calibration-from-data step is outside MATSim's scope.
 
-\paragraph{Origin-destination estimation: a coarser unit of
-modeling.}
+%\paragraph{Origin-destination estimation: a coarser unit of modeling.}
 A long line of transportation work estimates city-wide
 origin-destination (OD) matrices from cellular records combined
 with link counts~\cite{iqbal2014odmatrices} or from sparse
@@ -166,60 +166,64 @@ probe trajectories combined with link
 counts~\cite{yang2017odprobe}. These methods produce an OD
 matrix at zone or node resolution: each entry quantifies how
 many trips begin in zone $a$ and end in zone $b$, but commits
-to no particular route in between. The per-link traffic field
-we estimate sits at a strictly finer modeling unit, and OD
-estimation is a coarser predecessor rather than a direct
-competitor.
+to no particular route in between. Our learned per-link traffic field
+is finer modeling unit than OD estimation, and also incorporates temporal modeling.  
 
-\paragraph{PageRank applied to road and urban networks.}
-PageRank has been adapted to urban networks in three lines of
-work that are distinct from each other and from ours.
+%\paragraph{PageRank applied to road and urban networks.}
+PageRank has been adapted to urban networks in a variety of ways complementary to ours.  
+%three lines of
+%work that are distinct from each other and from ours.
+It has been used for structural centrality ranking of links in the network~\cite{agryzkov2023nonlocal}, or other ranking of urban spaces~\cite{jiang2009ranking}.   
+% \emph{Adapted PageRank as a structural
+% centrality.}~\cite{agryzkov2023nonlocal} apply a non-local
+% random walk to urban street networks to compute a node
+% centrality, working from the topology of the street graph
+% rather than from observed traffic. The output is a
+% structural centrality ranking, not a calibrated traffic
+% field; the random walk has no learned transition or
+% teleportation parameters and is never compared against
+% observed link occupancy.
+It has been used to model congestion, for instance by Wang \emph{et.al.}~\cite{wang2017pagerank} on a coarse 4,000 cell grid of Beijing.  
+These methods predominantly use PageRank for analysis, and may even evaluate it against some observations, but it is not trained on full traffic observations, and not at the level of link or time granularity that we build.  Our higher-resolution model, fit to real observations, will provide a better setting with which to perform these sorts of analysis.  
 
-\emph{Adapted PageRank as a structural
-centrality.}~\cite{agryzkov2023nonlocal} apply a non-local
-random walk to urban street networks to compute a node
-centrality, working from the topology of the street graph
-rather than from observed traffic. The output is a
-structural centrality ranking, not a calibrated traffic
-field; the random walk has no learned transition or
-teleportation parameters and is never compared against
-observed link occupancy.
+%\emph{PageRank scores as predictors of regional
+%congestion.}~\cite{wang2017pagerank} partition Beijing into a
+%$\sim\!4{,}000$-cell grid, weight inter-cell edges by taxi
+%flow at each time slot, run PageRank per slot, and report a
+%linear relation between a cell's PageRank now and its
+%congestion at the next slot. This is genuinely
+%PageRank-for-traffic, but at a strictly coarser unit than
+%ours ($4{,}000$ cells vs $99{,}716$ links), with no
+%calibrated random-walk parameters, no held-out validation,
+%and a scalar congestion target per cell rather than a
+%per-link occupancy distribution.
 
-\emph{PageRank scores as predictors of regional
-congestion.}~\cite{wang2017pagerank} partition Beijing into a
-$\sim\!4{,}000$-cell grid, weight inter-cell edges by taxi
-flow at each time slot, run PageRank per slot, and report a
-linear relation between a cell's PageRank now and its
-congestion at the next slot. This is genuinely
-PageRank-for-traffic, but at a strictly coarser unit than
-ours ($4{,}000$ cells vs $99{,}716$ links), with no
-calibrated random-walk parameters, no held-out validation,
-and a scalar congestion target per cell rather than a
-per-link occupancy distribution.
+% \emph{Weighted PageRank for ranking
+% spaces.}~\cite{jiang2009ranking} applies weighted PageRank to
+% a space-syntax connectivity graph of axial lines and validates
+% that PageRank scores rank-correlate with observed pedestrian
+% and vehicular movement rates at four observation sites in
+% central London ($50$-minute counts). The result is a relative
+% ranking of urban spaces, not a calibrated per-link traffic
+% field; there is no probe-data fit of the random walk's
+% transition or teleportation probabilities, no city-scale
+% per-link evaluation, and no held-out time-period validation.
 
-\emph{Weighted PageRank for ranking
-spaces.}~\cite{jiang2009ranking} applies weighted PageRank to
-a space-syntax connectivity graph of axial lines and validates
-that PageRank scores rank-correlate with observed pedestrian
-and vehicular movement rates at four observation sites in
-central London ($50$-minute counts). The result is a relative
-ranking of urban spaces, not a calibrated per-link traffic
-field; there is no probe-data fit of the random walk's
-transition or teleportation probabilities, no city-scale
-per-link evaluation, and no held-out time-period validation.
 
-\section{Data and preprocessing}
+
+
+\section{Data and Preprocessing}
 \label{sec:dataset}
 
 \subsection{Probe corpus}
 \label{sec:dataset-corpus}
 
-The raw input is a corpus of sparse GPS trajectory records collected
+Our raw input is a corpus of sparse GPS trajectory records collected by Intrix  \jeff{get details from Cathy}
 in the Salt Lake City metropolitan area between
 August~31,~2018 and September~30,~2018, a continuous $30$-day
-observation window. The data are distributed as a set of
-comma-separated value files (one per collection shard) without a
-header line. Each row corresponds to a single GPS fix and contains
+observation window. 
+The data are distributed as a set of data rows, with ones belonging to the same device are interleaved chronologically.  
+Each row corresponds to a single GPS fix and contains
 four fields:
 
 \begin{center}
@@ -235,22 +239,19 @@ Column & Meaning \\
 \end{tabular}
 \end{center}
 
-Rows belonging to the same device are interleaved chronologically
-across files. Coverage is spatially sparse: at any single short
-time window only a small fraction of the road network is actually
-touched by at least one device.
+%Rows belonging to the same device are interleaved chronologically across files. 
+%Coverage is spatially sparse: at any single short time window only a small fraction of the road network is actually touched by at least one device.
 
-The raw corpus contains $924{,}379{,}163$ GPS fixes; roughly
-$80\%$ of them fall outside a generous Salt Lake City
-bounding box and are dropped at the first preprocessing stage,
-leaving $179$ million fixes inside the metro area. After full
+The raw corpus contains $924{,}379{,}163$ GPS locations; however roughly
+$80\%$ of them fall outside the bounding box around the Salt Lake City metro area we study (see Figure \ref{fig:slc-extent}), and are dropped at the first preprocessing stage,
+leaving $179$ million locations inside the metro area. After full
 preprocessing and the map matching of \cref{sec:mapmatching},
 the corpus is reduced to approximately $2{,}477{,}000$ distinct
 trips, of which about $714{,}594$ survive map matching and
-contribute to the popularity matrix. The remaining trips are
-discarded for one of three reasons: fewer than five GPS fixes,
-fixes that fall outside the road network, or no viable Viterbi
-path. At this stage the data are purely geographic point
+contribute to the population matrix. The remaining trips are
+discarded for one of three reasons: fewer than five GPS locations,
+locations that fall outside the road network, or no viable Viterbi
+path (from map matching). At this stage the data are purely geographic point
 clouds: the observations are not yet associated with any road
 link, and no network structure has been introduced.
 
@@ -260,8 +261,8 @@ link, and no network structure has been introduced.
 \Description{Scatter of a random sample of raw GPS fixes
 zoomed around the SLC bounding box; red fixes lie inside the
 box, gray outside.}
-\caption{Raw GPS fixes around the SLC bounding box (random
-sample of $\sim\!10^{5}$ from $924$~M). Red points fall inside
+\caption{Raw GPS locations (random
+sample of $\sim\!10^{5}$ from $924$~M) and the SLC bounding box. Red points fall inside
 the box ($40.4$--$40.95^{\circ}$N, $112.15$--$111.55^{\circ}$W,
 dashed); gray fall outside.}
 \label{fig:slc-extent}
@@ -276,9 +277,9 @@ the hidden Markov map-matcher of Newson and
 Krumm~\cite{newson2009hmm}. The matcher models the
 GPS-to-link perpendicular distance as a zero-mean Gaussian with
 standard deviation $\sigma$ (in metres); $\sigma$ is the only
-emission parameter and is corpus-dependent. Newson and Krumm
+parameter and is corpus-dependent. Newson and Krumm
 fit $\sigma \approx 4.07$~m on their Seattle corpus; on our
-sparser SLC corpus we refit by self-consistency. We re-run the
+sparser SLC corpus we refit to be self-consist. We re-run the
 matcher across a range of candidate $\sigma$ (with a candidate
 pruning radius \texttt{max\_dist} $= 400$~m, the matcher's
 default upper bound on emission distance), compute the standard
@@ -326,59 +327,58 @@ pipeline uses high-resolution matching aggregated to
 low-resolution links; the low-res baseline of
 \cref{sec:baselines} uses low-resolution matching instead.
 
-\section{Popularity matrix}
+\subsection{Population matrix}
 \label{sec:counting}
 
 The final stage of the pipeline aggregates the matched edge visits
 into a sparse matrix $C \in \mathbb{Z}_{\ge 0}^{T \times N}$ that is the input
-to the rest of the project. Each row corresponds to a time bin, each
+to the rest of the model. Each row corresponds to a time bin, each
 column to a road link, and each entry counts the number of edge
 visits that fell into that bin and link.
 
-\subsection{Time bins}
+%\subsection{Time bins}
 
 Time is partitioned into non-overlapping bins of equal width
 $\Delta = 300$~seconds (five minutes). For an absolute timestamp
 $t$ measured in seconds since the epoch $t_0 = $~2018-01-01, the
 bin index is
-\begin{equation}
+$
 b(t) \;=\; \Big\lfloor \frac{t - t_0}{\Delta} \Big\rfloor.
-\end{equation}
-The binning is global: every matched fix produced anywhere in the
-$30$-day observation window is mapped to the same time grid, which
-contains $T = 30 \times 24 \times 12 = 8{,}640$ five-minute
+$
+There are $T = 30 \times 24 \times 12 = 8{,}640$ five-minute
 bins.
 A five-minute resolution is chosen to balance two competing
-constraints: too coarse a bin (e.g.\ one hour) blurs the rush-hour
-profile of the network; too fine a bin (e.g.\ one minute) leaves
+constraints: too coarse a bin (e.g., one hour) blurs the rush-hour
+profile of the network; too fine a bin (e.g., one minute) leaves
 the matrix excessively sparse, with most cells empty even on busy
 links.
 
-\subsection{Counting rule}
-\label{sec:counting-rule}
+%\subsection{Counting rule}
+%\label{sec:counting-rule}
 
-The matched-fix output of \cref{sec:mapmatching} provides, for
-each trip $r$, a list of pairs $(\textsf{lid}_j, t_j)$, one per
-emitting GPS fix. The counting rule is:
+\paragraph{Deduplication.}
+The map-matched output of \cref{sec:mapmatching} provides, for
+each trip $r$, a list of linkID (\textsf{lid}) - time pairs $(\textsf{lid}_j, t_j)$, one per
+emitting GPS location. The counting rule is:
 
 \begin{enumerate}[leftmargin=2.0em]
   \item \textbf{Bin assignment.} Each pair is assigned to the bin
-        \begin{equation}
+\[
           b_j \;=\; b\!\big(t_j\big)
               \;=\; \Big\lfloor \frac{t_j - t_0}{\Delta} \Big\rfloor.
-        \end{equation}
+\]
   \item \textbf{Per-trip deduplication.} For a given trip $r$, all
         fixes that fall in the same bin and on the same link are
         collapsed into a single contribution. Concretely, the set
         of contributions from trip $r$ is the set of distinct
         triples
-        \begin{equation}
+\[
           \big\{\,(b_j,\, \textsf{lid}_j,\, r) \;:\; j = 1, \ldots, M_r \,\big\}.
-        \end{equation}
-        If the same trip emits five fixes that all map to the same
+\]
+    If the same trip emits five GPS points that all map to the same
         bin and the same link, that combination is counted exactly
         once.
-  \item \textbf{Accumulation.} The popularity-matrix entry $C_{b, i}$
+  \item \textbf{Accumulation.} The population-matrix entry $C_{b, i}$
         is then the number of distinct trips that contributed at
         least one fix to bin $b$ on link $i$:
         \begin{equation}
@@ -391,12 +391,11 @@ emitting GPS fix. The counting rule is:
 
 The per-trip deduplication ensures that $C_{b, i}$ measures link
 occupancy by distinct vehicles in the corpus, not the GPS-emission
-density of those vehicles: a trip that produces several fixes while
+density of those vehicles: a trip that produces several GPS points while
 crossing one link inside a single $5$-minute window contributes one
-unit, not several.
+unit, not several.  
 
-\subsection{Sparse matrix representation}
-
+\paragraph{Sparse matrix representation.}
 The matrix $C$ has dimensions $T \times N \approx 8.6 \times 10^8$
 cells, where $T = 8{,}640$ is the number of five-minute bins
 (\cref{sec:counting}) and $N = 99{,}716$ is the number
@@ -407,23 +406,23 @@ compressed sparse row format alongside the per-row timestamps and
 per-column link identifiers, which on the SLC corpus reduces the
 artifact to roughly $7$~MiB.
 
-\subsection{\texorpdfstring{What $C$ does and does not measure}{What C does and does not measure}}
-
+%\subsection{\texorpdfstring{What $C$ does and does not measure}{What C does and does not measure}}
+\paragraph{Limitations of $C$ from Bias and Sparsity.}
 The matrix $C$ summarizes how many trips, drawn from the
 $714{,}594$-trip corpus, traversed each road link in each
 five-minute window of the $30$-day observation period. It is a
-direct empirical proxy for link usage and feeds the prior $E_b$
-used in the two-phase {PageRank} chain.
+direct empirical proxy for link usage and will inform our model.  
+%feeds the prior $E_b$ used in the two-phase {PageRank} chain.
 
-Two limitations are worth stating up front. First, the corpus is a
-biased sample of real traffic: it is drawn from a specific population
+Two limitations are worth stating up front. 
+First, the corpus is a biased sample of real traffic: it is drawn from a specific population
 of GPS-emitting devices and is not a uniform sample of all vehicles
 on the road. Links that systematically attract devices in the
 sample (e.g.\ commercial freeway corridors) are over-represented
 relative to links that attract a different population
 (e.g.\ residential cul-de-sacs). The matrix should therefore be
 read as a \emph{prior} on link usage, not as ground-truth volume.
-Second, even within the corpus, sparsity is structural: at any
+Second, even within the large corpus, sparsity is structural: at any
 single five-minute slot, the median number of GPS fixes per link is
 zero, and only a few hundred to a few thousand links carry any
 matched visit at all. To quantify this at the bin-of-week level,
@@ -436,13 +435,7 @@ weeks it received at least one matched fix. The result is in
 \begin{table}[H]
 \centering
 \caption{How often each (link, bin-of-week) cell was zero across
-the four weeks. The cell is structurally empty if all four weeks
-were zero. ``Active'' cells are the union of $k = 0, 1, 2, 3$
-rows ($5.95 \times 10^{6}$ in total, about $3\%$ of all cells).
-The total cell count $201{,}027{,}456 = N \times 2{,}016$
-counts \emph{(link, bin-of-week)} pairs for a single week
-($2{,}016 = 7 \times 288$ five-minute slots in a week); each
-cell carries four observations, one per calendar week.}
+the four weeks. }
 \label{tab:justif-zeros}
 \small
 \begin{tabular}{lrr}
@@ -465,73 +458,72 @@ the four weeks; only $0.15\%$ are active in all four. Most of
 the matrix is therefore not just sparse but \emph{structurally
 empty}, and most ``active'' cells are active in only one of the
 four weeks, i.e.\ represent a single noisy sample rather than a
-stable rate. The downstream graph-diffusion smoothing described
-elsewhere in the project addresses this by spreading mass to
-network neighbors of observed links.
+stable rate. 
 
-\section{Building the teleportation prior}
+%The downstream graph-diffusion smoothing described
+%elsewhere in the project addresses this by spreading mass to
+%network neighbors of observed links.
+
+\section{Building the Teleportation Prior}
 \label{sec:prior}
 
-\subsection{From counts to a prior by row-normalization}
+%\subsection{From counts to a prior by row-normalization}
 
 The matrix $C$ is converted into a per-bin
 teleportation prior by row-normalization. For every bin $b$ with
 $\sum_i C_{b, i} > 0$, define
-\begin{equation}
-E_b(i) \;=\; \frac{C_{b, i}}{\sum_{j} C_{b, j}}.
-\end{equation}
+\[
+E_b(i) \;=\; \frac{C_{b, i}}{\sum_{i'} C_{b, i'}}.
+\]
 This makes $E_b$ a probability distribution over the $N$ links of
 the network: the share of trip-presence mass during bin $b$ that
-landed on link $i$. Bins with no observed trips are assigned the
+landed on link $i$. Time bins with no observed trips are assigned the
 uniform distribution $E_b(i) = \frac{1}{N}$, which acts as an
 uninformative fallback.
 
-The construction of $E_b$ is the entire purpose of the pipeline
-described above: every step from raw GPS in \cref{sec:dataset} to
-the sparse matrix in \cref{sec:counting} contributes a piece of the
-journey from a device-level point cloud to a link-level distribution
-$E_b$ that the smoothing of \cref{sec:diffusion} regularizes and the
-model of \cref{sec:model} consumes.
+% The construction of $E_b$ is the entire purpose of the pipeline
+% described above: every step from raw GPS in \cref{sec:dataset} to
+% the sparse matrix in \cref{sec:counting} contributes a piece of the
+% journey from a device-level point cloud to a link-level distribution
+% $E_b$ that the smoothing of \cref{sec:diffusion} regularizes and the
+% model of \cref{sec:model} consumes.
 
-\subsection{Diffusion smoothing of the popularity prior}
-\label{sec:diffusion}
-
+\paragraph{Sparsity and Noise Floor.}
 The teleportation prior $E_b$ summarizes what was actually observed
-on the road network during bin $b$, but it has two structural
+on the road network during time bin $b$, but it has two structural
 shortcomings for predictive use. First, $E_b$ is sparse: a typical
 $5$-minute window puts non-zero mass on only a few thousand of the
 $N$ links, leaving the rest of the network at exact zero. Second, the empirical signal is noisy at fine
 resolution: the same heavy corridor can be touched by zero observed
-trips in one bin and several trips in the very next, simply because
+trips in one time bin and several trips in the very next, simply because
 no GPS device happened to emit a fix on that link inside that
-$5$-minute slot.
+$5$-minute slot.  
 
 We measure the scale of this noise from the four-week structure
 of the corpus. For each (link, bin-of-week) cell that the corpus
-saw at least once, we compute the standard deviation of its
-normalized count $E_b(i) = C_{b,i} / \sum_j C_{b,j}$ across the
-four weeks; this captures how much the same link in the same
-time-of-week jitters from week to week. We call this per-cell
-quantity $\NF_{b, i}$.
+saw at least once, we compute the standard deviation  $\NF_{b, i}$ of its
+normalized count $E_b(i)$ across the
+four weeks.  
+This captures how much the same link in the same
+time-of-week jitters from week to week. 
 
-\jeff{State the units explicitly: $E_b(i)$ is the probability that
-a GPS fix falling in bin $b$ lands on link $i$. The figure axis and
-the text should both say that.}
+% \jeff{State the units explicitly: $E_b(i)$ is the probability that
+% a GPS fix falling in bin $b$ lands on link $i$. The figure axis and
+% the text should both say that.}
 
-\hamid{Concretely, $E_b(i) = C_{b, i} / \sum_j C_{b, j}$ is the
-fraction of all GPS fixes recorded in bin $b$ that fell on link
-$i$, i.e.\ the probability that a single fix drawn uniformly from
-that 5-minute window lands on link $i$. The cross-week deviation
-$\NF_{b, i}$ is the spread of that probability across the four
-weeks at the matched bin-of-week; both quantities are
-dimensionless probability mass.}
+% \hamid{Concretely, $E_b(i) = C_{b, i} / \sum_j C_{b, j}$ is the
+% fraction of all GPS fixes recorded in bin $b$ that fell on link
+% $i$, i.e.\ the probability that a single fix drawn uniformly from
+% that 5-minute window lands on link $i$. The cross-week deviation
+% $\NF_{b, i}$ is the spread of that probability across the four
+% weeks at the matched bin-of-week; both quantities are
+% dimensionless probability mass.}
 
-The median over the $5.95 \times 10^{6}$ active cells of
+The median of $\NF_{b,i}$ over the $5.95 \times 10^{6}$ active cells in
 \cref{tab:justif-zeros} is $\NFG = 2.65 \times
-10^{-4}$, a single corpus-wide scalar used as a global yardstick.
-Differences in $E_b$ smaller than $\NF$ are not distinguishable
-from week-to-week sampling noise; the smoothing step below is
-calibrated to this scale.
+10^{-4}$, a single corpus-wide scalar \emph{noise floor}, used as a global yardstick of how much variation to trust.  See Figure \ref{fig:noise-floor-raw}, which shows a log-log plot of count of these $\NF_{b,i}$ values.  
+Differences in $E_b$ much smaller than $\NFG$ are not clearly distinguishable
+from week-to-week sampling noise.  We use this noise floor to calibrate the smoothing step below.  
 
 \begin{figure}[H]
 \centering
@@ -540,25 +532,27 @@ calibrated to this scale.
 \caption{Distribution of the cross-week standard deviation
 $\NF_{b, i} = \mathrm{std}_w \, E_b^{(w)}(i)$ across the four
 weeks, per (link, bin-of-week), restricted to the
-$5.95 \times 10^{6}$ active cells. \hamid{Units on the horizontal
-axis are dimensionless probability mass: a GPS-fix-on-link
-probability $E_b(i) = C_{b,i} / \sum_j C_{b, j}$.}}
+$5.95 \times 10^{6}$ active cells. }
 \label{fig:noise-floor-raw}
 \end{figure}
 
-{\color{blue}
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.75\linewidth]{figures/noise_floor_2plus_weeks.pdf}
-\Description{Same histogram as the previous figure but restricted to cells observed in at least 2 of the 4 weeks. The spike at zero is gone.}
-\caption{\textcolor{blue}{[temporary]} Same distribution as
-\cref{fig:noise-floor-raw} but restricted to cells observed in
-\emph{at least 2} of the 4 weeks ($1.96 \times 10^{6}$ pairs).
-Removing the one-week-only cells (whose std collapses to a
-near-zero spike) exposes the actual $\tau_{b,i}$ distribution.}
-\label{fig:noise-floor-2plus}
-\end{figure}
-}
+% {\color{blue}
+% \begin{figure}[H]
+% \centering
+% \includegraphics[width=0.75\linewidth]{figures/noise_floor_2plus_weeks.pdf}
+% \Description{Same histogram as the previous figure but restricted to cells observed in at least 2 of the 4 weeks. The spike at zero is gone.}
+% \caption{\textcolor{blue}{[temporary]} Same distribution as
+% \cref{fig:noise-floor-raw} but restricted to cells observed in
+% \emph{at least 2} of the 4 weeks ($1.96 \times 10^{6}$ pairs).
+% Removing the one-week-only cells (whose std collapses to a
+% near-zero spike) exposes the actual $\tau_{b,i}$ distribution.}
+% \label{fig:noise-floor-2plus}
+% \end{figure}
+% }
+
+
+\subsection{Diffusion Smoothing of Population Prior}
+\label{sec:diffusion}
 
 A graph-aware smoothing step addresses both issues at once. It
 lifts every link to a positive value (so the prior never has hard
@@ -570,11 +564,11 @@ $C \in \mathbb{Z}_{\ge 0}^{T \times N}$ in three steps.
 \paragraph{Laplace pseudo-count.}
 \label{sec:laplace}
 
-For every bin $b$ and every link $i$, replace the raw count by
+For every time bin $b$ and every link $i$, add a small factor $\alpha=\frac{1}{100}$ to the raw count 
 \begin{equation}
 \label{eq:laplace}
 c_b(i) \;=\; C_{b, i} + \alpha,
-\qquad \alpha = 10^{-2}.
+\qquad \alpha = \frac{1}{100}.
 \end{equation}
 After this step every entry of $c_b$ is positive: the row is dense
 before any further processing.
@@ -585,7 +579,7 @@ before any further processing.
 Let $P \in \mathbb{R}^{N \times N}$ be the row-stochastic adjacency
 matrix of the directed road graph: $P_{i, j} = \frac{1}{d^{\textsf{out}}_i}$
 when there is a road link from $i$ to $j$, and zero otherwise; here
-$d^{\textsf{out}}_i$ is the out-degree of link $i$. Apply one lazy
+$d^{\textsf{out}}_i$ is the out-degree of link $i$. Apply one
 random-walk step on the graph,
 \begin{equation}
 \label{eq:diffuse}
@@ -606,44 +600,29 @@ preserving the order of the heaviest links across the corpus.
 $\tilde E_b$ is used as an alternative to the raw $E_b$
 throughout the evaluation of \cref{sec:evaluation}.
 
-\paragraph{Choosing $\gamma$ from the noise floor.}
-The diffusion strength $\gamma$ is not free. We pick it so that
-the smoothing displaces any single cell by no more than half of
-that cell's own week-to-week sampling noise: any larger move and
-the smoother is overwriting structure with neighbor mass rather
-than filling in noise. Concretely, for each
+\subsection{Choosing $\gamma$ from the Noise Floor}
+
+We pick the diffusion strength $\gamma$ so that
+the smoothing rarely displaces any single cell by no more than about half of
+that cell's own week-to-week sampling noise.   Concretely, for each
 $(\text{link } i,\ \text{bin-of-week } b)$ cell with at least
 one observed positive count across the four full corpus weeks
-$w = 1, \ldots, W$, define the per-week displacement
-\begin{equation}
-\label{eq:displacement}
+$w = 1, \ldots, W$ (with $W=4$), define the per-week displacement
+\[
 D^{(w)}_{b, i}(\gamma)
 \;=\;
 \Big| \, \tilde E^{(w)}_{b, i}(\gamma) - E^{(w)}_{b, i} \, \Big|,
-\end{equation}
-the cell-level displacement averaged across the four weeks
-\begin{equation}
-\label{eq:disp-avg}
+\]
+as the difference between the smoothed normalized count $\tilde E^{(w)}_{b, i}(\gamma)$ with parameter $\gamma$, and the observed count in that week $E^{(w)}_{b, i}$.  
+The cell-level displacement averaged across the four weeks
+\[
 D_{b, i}(\gamma)
 \;=\;
 \frac{1}{W} \sum_{w = 1}^{W} D^{(w)}_{b, i}(\gamma),
-\end{equation}
+\]
 and compare it to the cross-week noise floor
-$\NF_{b, i}$ of the same cell. Both $D_{b, i}$ and $\NF_{b, i}$
-are in probability units, so the ratio $D_{b, i} / \NF_{b, i}$
-is \emph{dimensionless}: "displacement measured in units of one
-noise-floor unit." The criterion is
-\begin{equation}
-\label{eq:gamma-criterion}
-D_{b, i}(\gamma) \;\le\; \tfrac{1}{2}\, \NF_{b, i}.
-\end{equation}
-We compare each cell either against its own cross-week noise
-scale $\NF_{b, i}$ (\emph{per-cell criterion}, one number per
-active cell) or against the corpus-wide median noise scale
-$\NFG = 2.65 \times 10^{-4}$
-(\emph{global criterion}, a single scalar shared by every cell):
-\begin{align}
-\label{eq:gamma-criterion-pair}
+$\NF_{b, i}$ of the same cell or the global noise floor $\NFG$.   In particular, we aim for
+\begin{align*}
 \text{per-cell:}\quad
   & D_{b, i}(\gamma) \;\le\;
     \tfrac{1}{2}\, \NF_{b, i}, \\[2pt]
@@ -651,26 +630,50 @@ $\NFG = 2.65 \times 10^{-4}$
   & D_{b, i}(\gamma) \;\le\;
     \tfrac{1}{2}\, \NFG
     \;=\; 1.325 \times 10^{-4}.
-\end{align}
-On the active cells of the SLC corpus
-($n_{\textsf{active}} = 5{,}954{,}929$, per-cell
-$\NF$ median $= 2.3 \times 10^{-4}$),
-\cref{tab:gamma-noise-floor} reports three quantiles of each
-ratio: the median, the $95$th percentile, and the fraction of
-cells whose ratio exceeds the half-noise threshold.
+\end{align*}
+Table \ref{tab:gamma-noise-floor} shows statistics on this for various choices of $\gamma$.  
+It plots the median ratio $D_{b,i}(\gamma)/\NF_{b,i}$ or $D_{b,i}(\gamma)/\NFG$ (as $\text{med.}$).   
+It also provides the $95$th percentile of that ratio, and the percent of cells which exceed the $0.5$ criteria.  
+The per cell criteria fairs better than the global one, indicating that error decreases with these population rates.  We choose $\gamma = 0.2$ since it provides sufficient smoothing, but violates the criteria a small fraction of the time.  
+
+
+% Both $D_{b, i}$ and $\NF_{b, i}$
+% are in probability units, so the ratio $D_{b, i} / \NF_{b, i}$
+% is dimensionless. The criterion is
+% \begin{equation}
+% \label{eq:gamma-criterion}
+% D_{b, i}(\gamma) \;\le\; \tfrac{1}{2}\, \NF_{b, i}.
+% \end{equation}
+% We compare each cell either against its own cross-week noise
+% scale $\NF_{b, i}$ (\emph{per-cell criterion}, one number per
+% active cell) or against the corpus-wide median noise scale
+% $\NFG = 2.65 \times 10^{-4}$
+% (\emph{global criterion}, a single scalar shared by every cell):
+% \begin{align}
+% \label{eq:gamma-criterion-pair}
+% \text{per-cell:}\quad
+%   & D_{b, i}(\gamma) \;\le\;
+%     \tfrac{1}{2}\, \NF_{b, i}, \\[2pt]
+% \text{global:}\quad
+%   & D_{b, i}(\gamma) \;\le\;
+%     \tfrac{1}{2}\, \NFG
+%     \;=\; 1.325 \times 10^{-4}.
+% \end{align}
+% On the active cells of the SLC corpus
+% ($n_{\textsf{active}} = 5{,}954{,}929$, per-cell
+% $\NF$ median $= 2.3 \times 10^{-4}$),
+% \cref{tab:gamma-noise-floor} reports three quantiles of each
+% ratio: the median, the $95$th percentile, and the fraction of
+% cells whose ratio exceeds the half-noise threshold.
 
 \begin{table}[H]
 \centering
 \caption{Quantiles of the dimensionless displacement-to-noise
 ratio $D_{b, i}(\gamma) / \NF$ across the $5{,}954{,}929$
-active SLC cells; left block uses the per-cell denominator
+active SLC cells, and percentage that exceed $0.5$ ratio criteria.  
+Left block uses the per-cell denominator
 $\NF_{b, i}$, right block uses the global denominator
-$\NFG = 2.65 \times 10^{-4}$. Read each row as
-``at this $\gamma$, half / $95\%$ / fraction-above-$0.5$ of
-active cells are displaced by at most so-many noise units.''
-The criterion is the largest $\gamma$ whose $95$th-percentile
-ratio stays $\le 0.5$.
-\jeff{remove some of the columns}}
+$\NFG = 2.65 \times 10^{-4}$. }
 \label{tab:gamma-noise-floor}
 \small
 \setlength{\tabcolsep}{4pt}
@@ -702,6 +705,8 @@ $0.70$ & $0.418$ & $1.145$ & $32.10\%$ & $0.376$ & $2.364$ & $37.83\%$ \\
 \end{tabular}
 \end{table}
 
+
+\jeff{We probably don't need this zero cell data}
 \begin{table}[H]
 \centering
 \caption{\textcolor{blue}{[temporary]} Displacement of zero cells
@@ -746,19 +751,19 @@ per-cell criterion of \cref{tab:gamma-noise-floor} is undefined:
 it lifts a small adjacency-defined tail of zero cells into the
 noise band and leaves the rest at the Laplace floor.}
 
-\paragraph{Choice of $\gamma$.}
-Under the per-cell criterion the $95$th-percentile ratio first
-crosses $0.5$ between $\gamma = 0.25$ ($0.436$) and
-$\gamma = 0.30$ ($0.518$), so
-$\gamma_{\max}^{\textsf{pc}} \approx 0.25$. The stricter global
-criterion crosses between $\gamma = 0.13$ ($0.498$) and
-$\gamma = 0.14$ ($0.533$), giving
-$\gamma_{\max}^{\textsf{global}} \approx 0.13$. We use
-$\gamma = 0.20$ throughout the paper: it sits comfortably inside
-the per-cell ceiling, the median active cell is displaced by
-only $0.117 \, \NFG$ even under
-the global criterion, and the $95$th-percentile ratio crosses
-the half-noise bound only mildly ($0.741$).
+% \paragraph{Choice of $\gamma$.}
+% Under the per-cell criterion the $95$th-percentile ratio first
+% crosses $0.5$ between $\gamma = 0.25$ ($0.436$) and
+% $\gamma = 0.30$ ($0.518$), so
+% $\gamma_{\max}^{\textsf{pc}} \approx 0.25$. The stricter global
+% criterion crosses between $\gamma = 0.13$ ($0.498$) and
+% $\gamma = 0.14$ ($0.533$), giving
+% $\gamma_{\max}^{\textsf{global}} \approx 0.13$. We use
+% $\gamma = 0.20$ throughout the paper: it sits comfortably inside
+% the per-cell ceiling, the median active cell is displaced by
+% only $0.117 \, \NFG$ even under
+% the global criterion, and the $95$th-percentile ratio crosses
+% the half-noise bound only mildly ($0.741$).
 
 \paragraph{Violator tail at $\gamma = 0.20$.}
 To see how far past the tolerance the violators sit, we sweep
@@ -782,119 +787,135 @@ fraction $>\eta\,\NFG$
 The violator tail thins quickly: of the $8.9\%$ that exceed
 half the noise floor, only $3\%$ exceed $\NFG$ and fewer than
 $0.7\%$ exceed $2\,\NFG$, so the smoothing rarely changes a
-cell by more than its own week-to-week jitter. The per-cell
-and global criteria agree on the median and differ only on the
-upper tail (the per-cell version self-normalizes against busy
-cells, the global version measures every cell against the
-corpus median); we report both and use $\gamma = 0.20$ as the
-working compromise.
+cell by more than its own week-to-week jitter. 
+% The per-cell
+% and global criteria agree on the median and differ only on the
+% upper tail (the per-cell version self-normalizes against popular
+% cells, the global version measures every cell against the
+% corpus median).  
 
 
-\section{Evaluation framework}
+\subsection{Evaluation Mechanism}
 \label{sec:evaluation-framework}
 
-We now fix the metrics and protocol used by every subsequent
-evaluation, including the single-phase baseline of
-\cref{sec:baseline-singlephase} and the two-phase chain of
-\cref{sec:model}.
-
-\subsection{Error measures}
-\label{sec:error}
-
-To evaluate a chain we compare two probability vectors over the
-$N$ road links: a \emph{truth} vector $t$ and a \emph{prediction}
-vector $p$, both summing to one (each entry is the share of
-trip-presence mass on one link in a given bin). Two scalar
-summaries are used.
-
-\paragraph{Mean Relative Error (MRE).}
-For a numerical regularizer $\varepsilon \ge 0$, define the
-per-link relative error
-\begin{equation}
-\label{eq:mre-link}
+Now given the diffused population prior $\tilde E_b$, which we use as our ground truth proxy $t_i = \tilde E_b(i)$, we set up how we measure our model.  Since the population of each cell still varies significantly at different scales, we use a relative error for a prediction $p_i$ at a time bin $i$ is, 
+\[
 r_i \;=\; \frac{|t_i - p_i|}{t_i + \varepsilon},
-\end{equation}
-which is dimensionless: numerator and denominator are both in
-probability units, so $r_i$ measures error as a fraction of the
-truth itself. We aggregate $r_i$ across every link in the
-network:
-\begin{equation}
+\]
+where $\varepsilon = 10^{-6}$ is included to add stability.  Note this less than $\NFG/100$, less than the effect of $\frac{1}{10}$th of a trip on the busiest cell.  Then the overall score at that time bin $b$ is the mean relative error
+\[
 \textsf{MRE}_{\textsf{overall}} \;=\; \frac{1}{N} \sum_{i = 1}^{N} r_i.
-\end{equation}
-The regularizer $\varepsilon$ is
-needed only when $t$ has links with $t_i = 0$: it prevents division
-by zero and acts as a numerical floor that controls how much
-empty-truth links inflate the average. We report
-$\varepsilon = 10^{-6}$ throughout, and additionally
-$\varepsilon = 0$ in configurations where the diffused prior
-$\tilde E_b$ guarantees $t_i > 0$ on every link.
+\]
 
-\hamid{To anchor the scale, \cref{tab:fixes-per-bin} summarizes the
-number of matched GPS fixes in each $5$-minute bin across the
-$8{,}640$ bins of the corpus. The busiest bin contains
-$M_{\max} = 20{,}881$ fixes, so the smallest possible nonzero
-per-link probability anywhere in the corpus is
-$1 / M_{\max} \approx 4.8 \times 10^{-5}$. With the uniform
-per-link probability $1 / N \approx 1.00 \times 10^{-5}$ and the
-empirical noise floor
-$\NFG = 2.65 \times 10^{-4}$,
-our $\varepsilon = 10^{-6}$ sits below all three: it stabilizes
-the denominator for links with $t_i = 0$ without otherwise
-perturbing the links we care about.}
-\jeff{why $\varepsilon = 10^{-6}$}
 
-\begin{table}[H]
-\centering
-\caption{Matched GPS fixes per $5$-minute bin across the
-$8{,}640$ bins of the corpus.}
-\label{tab:fixes-per-bin}
-\small
-\begin{tabular}{lr}
-\toprule
-statistic & value \\
-\midrule
-total matched fixes & $58{,}410{,}362$ \\
-\midrule
-min                 & $295$ \\
-$10$th percentile   & $1{,}405$ \\
-median              & $4{,}823$ \\
-mean                & $6{,}760$ \\
-$90$th percentile   & $14{,}746$ \\
-max                 & $20{,}881$ \\
-\bottomrule
-\end{tabular}
-\end{table}
 
-\paragraph{Three comparisons.}
-For every target bin $t$ in the evaluation sample we compute the
-chain's prediction $\hat v(t)$ by running the iteration
-\eqref{eq:iter} until convergence with $E_b(t)$ (or $\tilde E_b(t)$)
-as the teleportation prior. We then form three (truth, prediction)
-pairs:
+%We now fix the metrics and protocol used by every subsequent
+%evaluation, including the single-phase baseline of
+%\cref{sec:baseline-singlephase} and the two-phase chain of
+%\cref{sec:model}.
 
-\begin{enumerate}
-  \item \textbf{dataset $\to$ dataset} (week to next week): truth
-        $= E_b(t + 7~\text{days})$, prediction $= E_b(t)$. Reports
-        the natural week-to-week variability of the empirical
-        signal at the same weekday and hour-of-day; serves as the
-        \emph{noise floor} the model needs to beat.
-  \item \textbf{dataset $\to$ model} (forecast next week): truth
-        $= E_b(t + 7~\text{days})$, prediction $= \hat v(t)$.
-        Reports how well the chain, fed this week's prior,
-        predicts next week's empirical signal.
-\end{enumerate}
-With the diffused prior, the same two comparisons replace
-$E_b$ by $\tilde E_b$ on \emph{both sides}: the truth vector,
-the prediction vector when the prediction is itself a prior
-(comparison 1), and the chain input that produces $\hat v(t)$
-(comparison 2) are all diffused before the MRE is taken. This
-keeps every comparison apples-to-apples within a single choice
-of prior.
+%\subsection{Error measures}
+%\label{sec:error}
+
+% To evaluate a chain we compare two probability vectors over the
+% $N$ road links: a \emph{truth} vector $t$ and a \emph{prediction}
+% vector $p$, both summing to one (each entry is the share of
+% trip-presence mass on one link in a given bin). Two scalar
+% summaries are used.
+
+% \paragraph{Mean Relative Error (MRE).}
+% For a numerical regularizer $\varepsilon \ge 0$, define the
+% per-link relative error
+% \begin{equation}
+% \label{eq:mre-link}
+% r_i \;=\; \frac{|t_i - p_i|}{t_i + \varepsilon},
+% \end{equation}
+% which is dimensionless: numerator and denominator are both in
+% probability units, so $r_i$ measures error as a fraction of the
+% truth itself. We aggregate $r_i$ across every link in the
+% network:
+% \begin{equation}
+% \textsf{MRE}_{\textsf{overall}} \;=\; \frac{1}{N} \sum_{i = 1}^{N} r_i.
+% \end{equation}
+% The regularizer $\varepsilon$ is
+% needed only when $t$ has links with $t_i = 0$: it prevents division
+% by zero and acts as a numerical floor that controls how much
+% empty-truth links inflate the average. We report
+% $\varepsilon = 10^{-6}$ throughout, and additionally
+% $\varepsilon = 0$ in configurations where the diffused prior
+% $\tilde E_b$ guarantees $t_i > 0$ on every link.
+
+% \hamid{To anchor the scale, \cref{tab:fixes-per-bin} summarizes the
+% number of matched GPS fixes in each $5$-minute bin across the
+% $8{,}640$ bins of the corpus. The busiest bin contains
+% $M_{\max} = 20{,}881$ fixes, so the smallest possible nonzero
+% per-link probability anywhere in the corpus is
+% $1 / M_{\max} \approx 4.8 \times 10^{-5}$. With the uniform
+% per-link probability $1 / N \approx 1.00 \times 10^{-5}$ and the
+% empirical noise floor
+% $\NFG = 2.65 \times 10^{-4}$,
+% our $\varepsilon = 10^{-6}$ sits below all three: it stabilizes
+% the denominator for links with $t_i = 0$ without otherwise
+% perturbing the links we care about.}
+% \jeff{why $\varepsilon = 10^{-6}$}
+
+% \begin{table}[H]
+% \centering
+% \caption{Matched GPS fixes per $5$-minute bin across the
+% $8{,}640$ bins of the corpus.}
+% \label{tab:fixes-per-bin}
+% \small
+% \begin{tabular}{lr}
+% \toprule
+% statistic & value \\
+% \midrule
+% total matched fixes & $58{,}410{,}362$ \\
+% \midrule
+% min                 & $295$ \\
+% $10$th percentile   & $1{,}405$ \\
+% median              & $4{,}823$ \\
+% mean                & $6{,}760$ \\
+% $90$th percentile   & $14{,}746$ \\
+% max                 & $20{,}881$ \\
+% \bottomrule
+% \end{tabular}
+% \end{table}
+
+
+\paragraph{One week to next.}
+We frame our predictions by using data from one week to predict the next.  This is similar to the noise floor, where we calibrated against the raw data set statistics predicting the next week at the same link and same time/day.  
+For our prediction, we use a forecast for a model built on one week, predicting to the same time period exactly 7 days forward (move forward time index by 2016).  
+
+% \paragraph{Three comparisons.}
+% For every target bin $t$ in the evaluation sample we compute the
+% chain's prediction $\hat v(t)$ by running the iteration
+% \eqref{eq:iter} until convergence with $E_b(t)$ (or $\tilde E_b(t)$)
+% as the teleportation prior. We then form three (truth, prediction)
+% pairs:
+
+% \begin{enumerate}
+%   \item \textbf{dataset $\to$ dataset} (week to next week): truth
+%         $= E_b(t + 7~\text{days})$, prediction $= E_b(t)$. Reports
+%         the natural week-to-week variability of the empirical
+%         signal at the same weekday and hour-of-day; serves as the
+%         \emph{noise floor} the model needs to beat.
+%   \item \textbf{dataset $\to$ model} (forecast next week): truth
+%         $= E_b(t + 7~\text{days})$, prediction $= \hat v(t)$.
+%         Reports how well the chain, fed this week's prior,
+%         predicts next week's empirical signal.
+% \end{enumerate}
+% With the diffused prior, the same two comparisons replace
+% $E_b$ by $\tilde E_b$ on \emph{both sides}: the truth vector,
+% the prediction vector when the prediction is itself a prior
+% (comparison 1), and the chain input that produces $\hat v(t)$
+% (comparison 2) are all diffused before the MRE is taken. This
+% keeps every comparison apples-to-apples within a single choice
+% of prior.
 
 \paragraph{Sampling protocol.}
 For each of the seven days of the week (Mon, $\ldots$, Sun) we
 draw $120$ source bins uniformly at random, for a total of
-$7 \times 120 = 840$ target bins. A bin is eligible only if
+$7 \times 120 = 840$ target bins.  A bin is eligible only if
 both the bin itself and its $+7$-day sibling exist in the
 matrix. In our $30$-day corpus this restricts source bins to
 days $1$--$23$ (Sept~$1$ to Sept~$23$) paired with siblings in
@@ -902,10 +923,14 @@ days $8$--$30$ (Sept~$8$ to Sept~$30$); the source bins
 therefore span weeks $1$--$3$ and the first days of week $4$,
 not just the first week. The seed is fixed ($7$), so the
 sample is identical across configurations.
+\jeff{why do we only evaluate on a sample?}
 
 
-\section{Baseline: single-phase PageRank}
-\label{sec:baseline-singlephase}
+\section{PageRank Model for Link-Level Traffic}
+\label{sec:pagerank}
+
+We now describe our PageRank model for representing traffic patterns on our metro-scale network.  
+Recall that PageRank~\cite{} was developed as a model of a random surfer on the internet; the resulting distribution of where the random surfer would visit in the limit formed the basis for Google's groundbreaking search engine.  In this way it models the outgoing links of a webpage as directed links in a graph, with pages as nodes; these form the probability transition matrix $P$.  
 
 The most natural baseline on the popularity prior $E_b$ is the
 single-phase PageRank chain with $E_b$ as the
@@ -972,18 +997,18 @@ $\textsf{Geom}(p = 0.0508)$ overlay.}
 \label{fig:single-phase-hist}
 \end{figure}
 
-\paragraph{Why this is a fair baseline.}
-Three reasons. First, single-phase PageRank is the standard
-graph-walk model on top of which the two-phase chain is built, so
-the two share a graph, a prior $E_b$, and a power-iteration solver;
-the only structural difference is the absence (single-phase) or
-presence (two-phase) of an up$\to$down split. Second, the teleport
-parameter $p$ is calibrated from the same trip corpus by the same
-method-of-moments estimator that yields $\beta$ and $\rho$, so the
-comparison is not penalized by an artificially detuned baseline.
-Third, the baseline runs on the same $840$ target bins, the same
-metric, and the same three comparisons as the two-phase chain, per
-the evaluation contract.
+% \paragraph{Why this is a fair baseline.}
+% Three reasons. First, single-phase PageRank is the standard
+% graph-walk model on top of which the two-phase chain is built, so
+% the two share a graph, a prior $E_b$, and a power-iteration solver;
+% the only structural difference is the absence (single-phase) or
+% presence (two-phase) of an up$\to$down split. Second, the teleport
+% parameter $p$ is calibrated from the same trip corpus by the same
+% method-of-moments estimator that yields $\beta$ and $\rho$, so the
+% comparison is not penalized by an artificially detuned baseline.
+% Third, the baseline runs on the same $840$ target bins, the same
+% metric, and the same three comparisons as the two-phase chain, per
+% the evaluation contract.
 
 \subsection{Why single-phase fails on our data}
 \label{sec:whyfails-singlephase}
@@ -1027,21 +1052,21 @@ two-phase chain in \cref{tab:eval} reaches forecast Overall MRE
 of $1.04$ on the same comparison, only marginally better than
 the single-phase baseline.
 
-\paragraph{Why the single-phase mixes too much.}
-At $p = 0.0508$ the chain takes on average
-$\frac{1}{p} = 19.7$ graph steps before teleporting back to
-$E_b$, which is the empirical mean trip length, so the chain is
-calibrated to the right time scale. But $19.7$ uniform random
-steps on the SLC road graph are enough to delocalize the
-walker's distribution across the network: the steady state of a
-random walk on a connected graph is the degree-proportional
-distribution, and even at finite damping the chain has visibly
-relaxed away from $E_b$ on the heavy links. The two-phase split
-absorbs that mixing into the down phase ($\rho = 0.101$ leak)
-while keeping the up phase close to $E_b$ ($\beta = 0.102$ leak,
-applied on $P^{\uparrow}$ rather than the uniform $P$), which is
-why the two-phase chain in \cref{tab:eval} preserves the
-heavy-traffic head where the single-phase baseline does not. The next section formalizes this two-phase chain.
+% \paragraph{Why the single-phase mixes too much.}
+% At $p = 0.0508$ the chain takes on average
+% $\frac{1}{p} = 19.7$ graph steps before teleporting back to
+% $E_b$, which is the empirical mean trip length, so the chain is
+% calibrated to the right time scale. But $19.7$ uniform random
+% steps on the SLC road graph are enough to delocalize the
+% walker's distribution across the network: the steady state of a
+% random walk on a connected graph is the degree-proportional
+% distribution, and even at finite damping the chain has visibly
+% relaxed away from $E_b$ on the heavy links. The two-phase split
+% absorbs that mixing into the down phase ($\rho = 0.101$ leak)
+% while keeping the up phase close to $E_b$ ($\beta = 0.102$ leak,
+% applied on $P^{\uparrow}$ rather than the uniform $P$), which is
+% why the two-phase chain in \cref{tab:eval} preserves the
+% heavy-traffic head where the single-phase baseline does not. The next section formalizes this two-phase chain.
 
 \section{Two-phase {PageRank} chain}
 \label{sec:model}
@@ -1473,28 +1498,24 @@ this contribution but does not eliminate it. With every truth
 value positive, the Overall MRE drops to $0.67$--$1.37$, a range
 in which the metric is interpretable as a relative error average.
 
-\subsection{Additive ladder: damping and road-type tuning on the whole network}
+\subsection{Additive ladder: road-type tuning with calibrated chain dynamics}
 \label{sec:ladder}
 
-This subsection isolates the contributions of the damping rate
-and the road-type weighting in two stages on the same evaluation
-sample. The sample is a set of $840$ calendar pairs
-$(t,\,t{+}7\,\text{d})$, drawn so that exactly $120$ pairs sit on
-each day of the week (seed $7$), with $t$ chosen from the first
-$23$ days of the corpus so that the next-week sibling is in
-range. The model receives $\tilde E_b(t)$ and predicts
-$\tilde E_b(t{+}7\,\text{d})$. The per-pair error is the Overall
-MRE (over all $N$ links), and we report its mean across the $840$
-pairs. Parameter bounds follow the geometric-fit discussion above:
-$\alpha,\,\beta,\,\rho \in [0.01,\,0.15]$, while $\alpha_s$ and
-$\alpha_l$ are unconstrained.
+This subsection isolates the contributions of damping and road-type
+weighting on the same evaluation sample. The sample is the set of
+$840$ calendar pairs $(t,\,t{+}7\,\text{d})$ used throughout this
+section, drawn so that exactly $120$ pairs sit on each day of the
+week (seed $7$), with $t$ chosen from the first $23$ days of the
+corpus so that the next-week sibling is in range. The model
+receives $\tilde E_b(t)$ and predicts $\tilde E_b(t{+}7\,\text{d})$.
+The per-pair error is the Overall MRE (over all $N$ links), and we
+report its mean across the $840$ pairs.
 
 \paragraph{Damping sweep (no road-type tuning).}
 We first hold $\alpha_s = \alpha_l = 0$ and sweep the damping
 rate. For the single-phase chain the rate is $\alpha$. For the
-two-phase chain we set $\beta = \rho$ and sweep the common
-value, so that the two columns differ only by the chain
-structure.
+two-phase chain we set $\beta = \rho$ and sweep the common value,
+so that the two columns differ only by the chain structure.
 
 \begin{table}[H]
 \centering
@@ -1519,314 +1540,164 @@ $0.15$ & $\mathbf{0.923}$ & $\mathbf{0.984}$ \\
 \end{table}
 
 Both columns improve monotonically as the damping rate increases
-toward the upper bound of the search box. Single-phase
-outperforms two-phase at every common rate by approximately
-$0.05$--$0.06$ on Overall MRE.
+toward the upper bound of the search box. With \emph{no
+road-type weighting} single-phase outperforms two-phase at every
+common rate by approximately $0.05$--$0.06$ on Overall MRE.
 
-\paragraph{Road-type tuning on top.}
-\Cref{tab:ladder-tuning} fixes the damping rate at the upper
-bound and adds road-type weighting, either lanes only, speed
-only, or both jointly. Each tuned operating point is found by
-L-BFGS-B with finite-difference gradients and five random
-starts; the optimization minimizes Overall MRE on the same
-$840$ pairs. The vanilla rows from \cref{tab:ladder-damping}
-are reproduced for reference at the same damping rate.
+\paragraph{Road-type tuning with calibrated chain dynamics.}
+\Cref{tab:ladder-tuning} flips the comparison: the chain dynamics
+are now \emph{pinned} at the geometric-fit values estimated from
+the data ($\alpha = 0.0508$ for the single-phase chain;
+$\beta = 0.102$, $\rho = 0.101$ for the two-phase chain in its
+main-body form). Only the road-type exponents $\alpha_s$ and
+$\alpha_l$ are learned by the optimizer (L-BFGS-B, five random
+starts, finite-difference gradients, unbounded). Five rows are
+shown per chain:
+%
+\begin{itemize}\setlength\itemsep{0pt}
+\item \emph{uniform prior}: $E_b = \mathbf{1}/N$, no road-type
+      tuning;
+\item \emph{diffuse prior}: $E_b = \tilde E_b(t)$, no road-type
+      tuning;
+\item $+$\emph{lanes only}, $+$\emph{speed only}, $+$\emph{both}:
+      progressively add the road-type exponents.
+\end{itemize}
+%
+The two blocks of the table differ only by the chain. Once the
+dynamics are calibrated from the data, the picture in
+\cref{tab:ladder-damping} reverses: the two-phase chain beats
+single-phase at every row of the ladder by about $0.02$--$0.03$
+on Overall MRE, with the gap widening once road-type weights are
+introduced.
 
 \begin{table}[H]
 \centering
-\caption{Road-type tuning on the $840$ pairs, Overall MRE
-objective. Single-phase block: $\alpha \in [0.01,0.15]$,
-$\alpha_s,\alpha_l$ unbounded unless noted. Two-phase block:
-$\beta, \rho \in [0.01,0.15]$, $\alpha_s,\alpha_l$ unbounded
-unless noted. Vanilla rows are objective-independent; tuned rows
-report the operating point at the optimizer's solution.}
+\caption{Single-phase (SP) vs.\ two-phase new-form (TP) on the
+$840$-pair eval, with chain dynamics \emph{fixed} at the
+geometric-fit values. The optimizer only learns the road-type
+exponents $\alpha_s, \alpha_l$ (unbounded); the chain
+parameters $\alpha$, $\beta$, $\rho$ are never touched.
+``$-$'' means no road-type tuning. TP beats SP at every row.}
 \label{tab:ladder-tuning}
 \setlength{\tabcolsep}{3pt}
 \renewcommand{\arraystretch}{1.25}
 \begin{tabular}{|p{0.22\linewidth}|p{0.50\linewidth}|r|}
 \hline
-variant & parameters & Ov.\ MRE \\
+variant & parameters at the optimum & Ov.\ MRE \\
 \hline\hline
-\multicolumn{3}{|l|}{\emph{Single-phase}} \\
+\multicolumn{3}{|l|}{\emph{Single-phase}\quad ($\alpha\!=\!0.0508$ fixed)} \\
 \hline
-uniform prior                        & $\alpha\!=\!0.15$, $E_b\!=\!\mathbf{1}/N$                       & $1.309$ \\
+uniform prior  & $E_b\!=\!\mathbf{1}/N$                                                            & $1.3127$ \\
 \hline
-vanilla                              & $\alpha\!=\!0.05$                                                & $1.072$ \\
+diffuse prior  & $E_b$ from the diffused popularity                                                 & $1.0697$ \\
 \hline
-vanilla                              & $\alpha\!=\!0.15$                                                & $0.923$ \\
+$+$ lanes only & $\alpha_l\!=\!+0.411$                                                              & $1.0596$ \\
 \hline
-$+$ lanes only                       & $\alpha\!=\!0.15$, $\alpha_l\!=\!+0.337$                       & $0.916$ \\
+$+$ speed only & $\alpha_s\!=\!+3.050$                                                              & $1.0028$ \\
 \hline
-$+$ speed only                       & $\alpha\!=\!0.15$, $\alpha_s\!=\!+2.859$                       & $0.870$ \\
-\hline
-$+$ both                             & $\alpha\!=\!0.15$, $\alpha_s\!=\!+2.674$, $\alpha_l\!=\!+0.169$ & $0.869$ \\
-\hline
-\makecell[tl]{$+$ both,\\ $\alpha$ fixed} & $\alpha\!=\!0.05$; $\alpha_s\!=\!+2.774$, $\alpha_l\!=\!+0.243$ & $1.002$ \\
+$+$ both       & $\alpha_s\!=\!+2.775$, $\alpha_l\!=\!+0.242$                                       & $0.9997$ \\
 \hline\hline
-\multicolumn{3}{|l|}{\emph{Two-phase}} \\
+\multicolumn{3}{|l|}{\emph{Two-phase (new form)}\quad ($\beta\!=\!0.102$, $\rho\!=\!0.101$ fixed)} \\
 \hline
-uniform prior                        & $\beta\!=\!\rho\!=\!0.15$, $E_b\!=\!\mathbf{1}/N$               & $1.311$ \\
+uniform prior  & $E_b\!=\!\mathbf{1}/N$                                                            & $1.3119$ \\
 \hline
-vanilla                              & $\beta\!=\!0.102$, $\rho\!=\!0.101$                              & $1.041$ \\
+diffuse prior  & $E_b$ from the diffused popularity                                                 & $1.0413$ \\
 \hline
-vanilla                              & $\beta\!=\!\rho\!=\!0.15$                                        & $0.984$ \\
+$+$ lanes only & $\alpha_l\!=\!+0.377$                                                              & $1.0323$ \\
 \hline
-$+$ lanes only                       & $\beta\!=\!0.15$, $\rho\!=\!0.15$, $\alpha_l\!=\!+1.875$       & $0.962$ \\
+$+$ speed only & $\alpha_s\!=\!+3.052$                                                              & $0.9725$ \\
 \hline
-$+$ speed only                       & $\beta\!=\!0.15$, $\rho\!=\!0.15$, $\alpha_s\!=\!+5.136$       & $0.930$ \\
-\hline
-$+$ both                             & $\beta\!=\!0.15$, $\rho\!=\!0.15$, $\alpha_s\!=\!+4.621$, $\alpha_l\!=\!+0.458$ & $0.929$ \\
-\hline
-\makecell[tl]{$+$ both,\\ $(\beta,\rho)$ fixed} & $(\beta,\rho)\!=\!(0.102,0.101)$;\ $\alpha_s\!=\!+2.816$, $\alpha_l\!=\!+0.209$ & $0.970$ \\
-\hline\hline
-\multicolumn{3}{|l|}{\color{blue}\emph{Two-phase, classical form (appendix)}} \\
-\hline
-\textcolor{blue}{uniform prior} & \textcolor{blue}{$\alpha\!=\!0.15$, $\beta\!=\!0.15$, $E_b\!=\!\mathbf{1}/N$} & \textcolor{blue}{$1.309$} \\
-\hline
-\textcolor{blue}{vanilla} & \textcolor{blue}{$\alpha\!=\!0.05$, $\beta\!=\!0.15$} & \textcolor{blue}{$1.058$} \\
-\hline
-\textcolor{blue}{vanilla} & \textcolor{blue}{$\alpha\!=\!0.15$, $\beta\!=\!0.15$} & \textcolor{blue}{$0.908$} \\
-\hline
-\textcolor{blue}{$+$ lanes only} & \textcolor{blue}{$\alpha\!=\!0.15$, $\beta\!=\!0.15$, $\alpha_l\!=\!+0.340$} & \textcolor{blue}{$0.901$} \\
-\hline
-\textcolor{blue}{$+$ speed only} & \textcolor{blue}{$\alpha\!=\!0.15$, $\beta\!=\!0.15$, $\alpha_s\!=\!+2.839$} & \textcolor{blue}{$0.857$} \\
-\hline
-\textcolor{blue}{$+$ both} & \textcolor{blue}{$\alpha\!=\!0.15$, $\beta\!=\!0.15$, $\alpha_s\!=\!+2.655$, $\alpha_l\!=\!+0.167$} & \textcolor{blue}{$0.856$} \\
+$+$ both       & $\alpha_s\!=\!+2.816$, $\alpha_l\!=\!+0.210$                                       & $\mathbf{0.9701}$ \\
 \hline
 \end{tabular}
 \end{table}
+\section{Case study: detecting an unannounced event}
+\label{sec:fair-case-study}
 
-\paragraph{Discussion.}
+\paragraph{1.\ Detection from the ground truth.}
+For every $5$-minute slot $t$ we compare the raw map-matched
+counts at $t$ and at $t + 7$ days, restricted to links carrying
+at least five trips at $t$:
+\begin{equation}
+\mathrm{MRE}(t) \;=\;
+\frac{1}{|S(t)|}\sum_{i \in S(t)}
+\frac{|c_{t+7}(i) - c_t(i)|}{c_t(i)},
+\;\;
+S(t) = \{i : c_t(i) \geq 5\}.
+\label{eq:slot-mre}
+\end{equation}
+\Cref{fig:fair-detect} plots the per-slot $\mathrm{MRE}$
+distribution for three consecutive week-pair comparisons.
+W2$\to$W3 has a markedly heavier right tail than W1$\to$W2 or
+W3$\to$W4: there exist W2 slots whose twin in W3 looks very
+different. Inspecting that tail, the twelve consecutive
+$5$-minute bins of Tue Sep 11 $16{:}00$--$17{:}00$ all sit
+inside it (mean per-slot $\mathrm{MRE}$ on the hour: $0.694$,
+versus the top-$24$ cutoff $0.683$ in the $\mathrm{W2\!\to\!W3}$
+distribution). This hour is the event window we take into the
+rest of the case study.
 
+\begin{figure}[h]
+\centering
+\includegraphics[width=\linewidth]{figures/detect_hist.pdf}
+\caption{Per-slot $\mathrm{MRE}$ for three consecutive week-pair
+comparisons. W2$\to$W3 has the heaviest right tail; the dashed
+line in each panel marks that distribution's top-$24$ cutoff.}
+\label{fig:fair-detect}
+\end{figure}
 
-\hamid{Collapsing the chain into a single block matrix
-(\cref{eq:M-block}) loses to single-phase PageRank on the full-network
-week-to-week prediction in \cref{tab:ladder-tuning}. The two models are
-not nested: single-phase is not recoverable as a special case of this
-two-phase form, so the loss is not an inference artefact but a
-structural one. The two-phase form only outperforms single-phase on the
-Sept-15 stadium cluster (\cref{tab:heldout-headline}), not on the whole
-network. The classical-form two-phase chain in \cref{app:tp-old-form},
-where the transition matrix and the teleportation vector are kept
-separate, leads both single-phase and the block-matrix two-phase on
-every ladder rung in our early runs. A second observation: every chain
-underperforms when $\alpha, \beta, \rho$ are pinned to the geometric-fit
-values of \cref{sec:beta-rho-calibration}; raising the teleportation
-coefficient toward the upper bound $0.15$ improves the prediction
-because more mass is placed on the prior $E_b$, and the prior, which is
-the same bin one week earlier after $\gamma$-diffusion, is itself a
-strong predictor of the target bin.}
-\rule{0pt}{6ex}
-\noindent
-\rule{0pt}{6ex}
-\noindent
-\rule{0pt}{6ex}
-
-\subsection{Baselines and alternative pipelines}
-\label{sec:baselines}
-
-To show that our model is doing real work, we compare it
-against simpler pipelines. Each simpler pipeline drops one
-part of our method: the up and down split, the diffusion
-smoothing, the high-resolution map, or the model itself. We
-feed each pipeline the same data and measure the same three
-errors as \cref{tab:eval}. If our full model beats every
-simpler version, each part of the method earns its place.
-
-We test three simpler pipelines:
-\begin{itemize}
-  \item \textbf{Naive.} Copy last week's counts as the
-        prediction for this week. No model, no smoothing. This
-        is already the dataset-to-dataset row of
-        \cref{tab:eval} and serves as the noise floor.
-  \item \textbf{One-phase PageRank.} A single PageRank chain on
-        the same prior, with no split into an up phase and a
-        down phase. This tests whether the two-phase
-        decomposition of \cref{sec:two-phases} actually helps.
-  \item \textbf{Low-resolution matching.} Keep the full
-        two-phase chain but build the popularity counts from
-        matching on the low-resolution map instead of the
-        high-resolution one. This is the version of the
-        pipeline used before the matching upgrade in
-        \cref{sec:mapmatching}, and tests whether the long
-        curvy roads recovered by the high-resolution matcher
-        matter for prediction quality.
-\end{itemize}
-Each baseline runs on the same $840$ bins as the main
-evaluation and reports the same three errors.
-
-\subsection{Intervention case study: Utah vs Washington, Sept 15 2018}
-\label{sec:intervention}
-\label{sec:intervention-ricecles}
-
-On Saturday September 15, 2018 at 8:00\,PM MDT the University of
-Utah hosted the University of Washington at Rice-Eccles Stadium
-($40.7596^{\circ}$\,N, $111.8485^{\circ}$\,W), with reported
-attendance of $47{,}445$. The game lies in the middle of our
-30-day corpus, so we can ask whether the chain's pre-kickoff-hour
-forecast on this particular Saturday differs in a measurable way
-from a normal Saturday at the same time of day, and whether
-tuning the chain's parameters on this event window recovers any
-of that gap.
-
-\paragraph{Cluster construction.}
-We rank road links by their typical pre-kickoff traffic and keep
-the busiest few near the stadium. Concretely: take every link
-whose midpoint lies within $1$\,km of Rice-Eccles, which leaves
-$305$ candidate links. Each candidate carries a per-bin link
-probability $E_b(i)$ summing to one over the full network; we
-average those per-bin probabilities across the kickoff hour
-($12$ five-minute bins, $19{:}00$ to $19{:}55$) on three clean
-baseline Saturdays (Sept 1, 8, and 22), giving
-$12 \times 3 = 36$ probability values per link that we collapse
-to one scalar ``mean kickoff-hour popularity'' by averaging.
-(Sept 15 is the event itself, and Sept 29 is another Utah home
-football game, so neither is used.) We then take the top-$k$
-candidates by that scalar. We report $k \in \{10, 20, 30\}$. The $k = 30$ cluster is shown in
-\cref{fig:stadium-corridors}: $30$ red links concentrated along
-the east-west arterial spine immediately south of the campus,
-plus a couple of north-south cross-streets.
+\paragraph{2.\ Localize the event to a known landmark.}
+Within each of the twelve $5$-minute bins of the event hour
+$16{:}00$--$17{:}00$, we compute the per-link difference
+$c_{\mathrm{Sep11}}(t,i) - c_{\mathrm{Sep18}}(t,i)$ on the raw
+counts, keeping only bins where $c_{\mathrm{Sep11}}(t,i) \geq 5$
+to ignore noise from near-zero baselines. Averaging this
+difference over the eligible bins per link and ranking, the
+top-$200$ links concentrate on parts of the network where Sep 11
+afternoon traffic was substantially higher than Sep 18
+afternoon. We then test whether those top-$200$ overlap with a
+known landmark in SLC by centering a $2km$
+radius circle at $(40.7223^{\circ}\mathrm{N},
+-111.9047^{\circ}\mathrm{W})$ and counting top-$200$ links
+falling inside it. \emph{Fifteen} of the $200$ sit inside the
+circle, hugging the I-$15$ corridor that runs through the
+landmark area (\cref{fig:circle-region-map}). The remaining
+$185$ links sit further south, in a separate Cottonwood Heights
+cluster.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\linewidth]{figures/fig_stadium_corridors_top30.pdf}
-\caption{Cluster ranked over $19{:}00$--$19{:}55$ on
-Sept 1, 8, and 22.}
-\label{fig:stadium-corridors}
+\includegraphics[width=\linewidth]{figures/circle_region_map.pdf}
+\caption{Fifteen of the top-$200$ per-slot-difference links inside
+a $2km$ radius circle at the chosen landmark, on
+the local road network (grey). Light blue marks the freeway
+($70$,mph) segments.}
+\label{fig:circle-region-map}
 \end{figure}
 
-\paragraph{Experimental design.}
-The chain's parameters are trained on non-event Saturday pairs at
-the same kickoff hour
-(Sept~1 $\to$ Sept~8 and Sept~22 $\to$ Sept~29, $19{:}00$--$19{:}55$)
-and then frozen. At test time the frozen chain is given the
-\emph{trip-origins distribution} of Sept~15, the per-link
-per-bin count of trips that start on each link during the
-kickoff hour, normalized to a probability. The origins vector
-carries the event signal (extra starts around the stadium)
-without leaking the link-popularity values we are predicting.
-Parameters never see Sept~15 link densities. The output of the
-frozen chain on the Sept~15 origins input is compared against
-Sept~15 link popularity on the top-$k$ cluster; lower is better.
-Both single-phase and two-phase chains are tuned with the same
-L-BFGS-B protocol on the training pairs (five multi-start
-initializations, $p, \beta, \rho \in [0.01, 0.15]$,
-$\alpha_s, \alpha_l$ unbounded).
-
-\paragraph{Headline result: held-out comparison.}
-\Cref{tab:heldout-headline} reports the held-out d2m on the
-Sept~15 cluster for the proposed two-phase chain, the
-single-phase one-stage Markov chain baseline, and three simpler
-predictors that drop one component of the pipeline.
-
-\begin{table}[H]
+\paragraph{3.\ The anomaly on the localized $15$-link region.}
+We now restrict attention to those $15$ links and compare the
+event hour against three reference Tuesdays.
+\Cref{fig:region-bars} plots the total trips per $5$-minute bin
+on the $15$-link region for Tue Sep 18 (the anomalous week 3 day
+on this corridor) against the average over Tue Sep 4, Sep 11,
+and Sep 25. Across all twelve bins Sep 18 sits well below the
+reference average; the hour total is $309$ trips on Sep 18
+against $783$ on the reference average, roughly a $2.5\times$
+drop. 
+\begin{figure}[H]
 \centering
-\caption{Held-out forecast d2m on the Sept~15 stadium cluster.
-Parameters fit only on the non-event Saturday pairs (Sept~1
-$\to$ Sept~8 and Sept~22 $\to$ Sept~29 at the kickoff hour) and
-frozen before evaluation on Sept~15. Test input is the Sept~15
-trip-origins distribution after $\gamma$-diffusion. Lower is
-better. Read each cell as ``this predictor's mean per-link
-relative error, averaged over the $12$ kickoff-hour bins and
-the top-$k$ stadium links.''}
-\label{tab:heldout-headline}
-\resizebox{\linewidth}{!}{%
-\begin{tabular}{lcccl}
-\toprule
-predictor & top-10 & top-20 & top-30 & notes \\
-\midrule
-two-phase, tuned (ours)   & $\mathbf{0.678}$ & $\mathbf{0.751}$ & $\mathbf{0.848}$ & main method \\
-single-phase, tuned       & $0.709$ & $0.826$ & $0.852$ & 1-stage Markov chain \\
-two-phase, no dangling fix (v1) & $1.734$ & $2.160$ & $2.054$ & earlier two-phase variant \\
-two-phase, no $\gamma$-smoothing & $1.785$ & $2.249$ & $2.084$ & raw Laplace prior \\
-$d2d$ (last week's popularity, no chain) & $7.088$ & $8.918$ & $8.062$ & naive baseline \\
-\bottomrule
-\end{tabular}}
-\end{table}
+\includegraphics[width=\linewidth]{figures/region_bars.pdf}
+\caption{Trips per $5$-min bin in $16{:}00$--$17{:}00$, Tue Sep
+18 vs the average over Sep 4, 11, 25.}
+\label{fig:region-bars}
+\end{figure}
 
-\paragraph{Reading the table.}
-The two-phase chain is the best predictor on every cluster
-under the held-out protocol, by $0.031$ d2m on top-$10$,
-$0.075$ d2m on top-$20$, and $0.004$ d2m on top-$30$ relative
-to the single-phase chain. The remaining baselines tell a
-consistent story: the naive $d2d$ row uses last week's
-popularity and lands at the event-day noise floor; the v1
-chain without the dangling-link fix and the no-$\gamma$-smoothing
-variant both sit well above the tuned chains, showing that the
-dangling correction and the $\gamma$-smoothing component each
-earn their place in the pipeline.
 
-\begin{table}[H]
-\centering
-\caption{Frozen-tuned parameter values per cluster, fit on the
-non-event Saturday training pairs (origins $\to$ popularity).
-Parameter ranges: $p, \beta, \rho \in [0.01, 0.15]$,
-$\alpha_s, \alpha_l$ unbounded. Read each row as ``on this
-cluster size, L-BFGS-B converged to these parameters and
-produced the d2m bolded in \cref{tab:heldout-headline};
-$\alpha_s, \alpha_l$ are unbounded exponents and can fall
-outside $[-1, 1]$.''}
-\label{tab:event-topk-params}
-\resizebox{\linewidth}{!}{%
-\begin{tabular}{lcccc|cccc}
-\toprule
-& \multicolumn{3}{c}{single-phase} & & \multicolumn{4}{c}{two-phase} \\
-\cmidrule(lr){2-4}\cmidrule(lr){6-9}
-cluster & $p$ & $\alpha_s$ & $\alpha_l$ &
-        & $\alpha_s$ & $\alpha_l$ & $\beta$ & $\rho$ \\
-\midrule
-top-10 & $0.01$ & $-2.39$ &  $+4.67$ &
-       & $+3.62$  & $-4.22$  & $0.15$ & $0.01$ \\
-top-20 & $0.01$ & $-4.11$ &  $-0.62$ &
-       & $-6.43$  & $-1.03$  & $0.01$ & $0.1049$ \\
-top-30 & $0.01$ & $+47.36$ & $-15.03$ &
-       & $+77.20$ & $-33.47$ & $0.01$ & $0.01$ \\
-\bottomrule
-\end{tabular}}
-\end{table}
 
-\section{Discussion and limitations}
-\label{sec:discussion}
 
-\paragraph{What the held-out experiment shows.}
-Under proper held-out conditions the two-phase chain remains
-the best predictor on the Sept~15 stadium cluster across the
-predictors we considered: it beats the single-phase chain, the
-v1 two-phase chain without the dangling-node fix, the
-no-$\gamma$-smoothing variant, and the no-chain baselines. The
-gap between the two-phase chain and the single-phase chain is
-smaller than under the in-sample protocol because the
-held-out setup denies both chains direct access to the event-day
-ground truth, but the ordering is preserved across all three
-cluster sizes (top-$10$, top-$20$, top-$30$). Every component
-of the pipeline (Laplace pseudo-count, $\gamma = 0.20$
-diffusion, dangling-node correction, two-phase split) is shown
-to earn its place by an ablation against the corresponding
-simpler variant in \cref{tab:heldout-headline}.
 
-\paragraph{Limitations.}
-The probe corpus is a biased sample (\cref{sec:counting}): it
-oversamples freeway corridors and undersamples residential
-streets. The chain therefore predicts \emph{probe-population
-link popularity}, not a uniform-vehicle volume. The validation
-also tests prediction at a single time scale ($5$-minute bins)
-and a single city; cross-city transfer and finer-grained
-resolutions are outside scope. Finally, the intervention case
-study uses a single known event; an evaluation across many
-labeled events would strengthen the generalization claim.
 
-\section{Conclusion}
-
-We presented a two-phase {PageRank} chain that turns a smoothed
-per-link popularity prior into a per-link traffic prediction on
-a $99{,}716$-link city graph, with all calibration steps
-($\sigma$ for map-matching, $\gamma$ for diffusion smoothing,
-$\beta$ and $\rho$ for the chain) driven by the data. Under a
-proper held-out protocol on a real event (Utah vs Washington,
-Sept~15 2018), the two-phase chain beats the single-phase
-baseline and a suite of simpler comparators on every stadium
-cluster size, validating both the two-phase architecture and
-the calibration pipeline.
 
 \begin{thebibliography}{99}
 
@@ -1986,65 +1857,9 @@ Xiao Liang, Jichang Zhao, Li Dong, and Ke Xu.
 \newblock \emph{Scientific Reports}, 3:2983, 2013.
 \newblock \href{https://doi.org/10.1038/srep02983}{doi:10.1038/srep02983}.
 
+
+
 \end{thebibliography}
 
 
-
-\appendix
-\section{Appendix: classical-form two-phase chain}
-\label{app:tp-old-form}
-
-\subsection{Definition}
-
-Let $P_{cs}$ be the column-stochastic out-adjacency of the directed road
-network (each column of $P_{cs}$ sums to one and represents the
-distribution of next-link probabilities out of a given source link), and
-let $E_b$ be the diffused popularity prior at the source bin. We build
-the $2N \times 2N$ block transition
-
-\begin{equation}
-M_{2N} \;=\;
-\begin{bmatrix}
-(1-\beta)\, P_{cs} & 0 \\[3pt]
-\beta\, I          & P_{cs}
-\end{bmatrix},
-\qquad
-E_{2N} \;=\;
-\begin{bmatrix} E_b \\[3pt] 0 \end{bmatrix}.
-\label{eq:tp-old-block}
-\end{equation}
-
-$M_{2N}$ is column-stochastic, acting directly on probability vectors:
-from any link in the up phase, a fraction $(1-\beta)$ of its mass follows
-the topology within the up phase and a fraction $\beta$ commits to the
-same link in the down phase; once in the down phase, mass keeps following
-the topology with no internal restart. The chain iterates
-
-\begin{equation}
-v^{(k+1)} \;=\; (1-\alpha)\, M_{2N}\, v^{(k)} \;+\; \alpha\, E_{2N},
-\label{eq:tp-old-iter}
-\end{equation}
-
-where $\alpha \in (0,1)$ is the global teleportation rate. Component-wise:
-
-\begin{align}
-v_{up}^{(k+1)}   &= (1-\alpha)(1-\beta)\, P_{cs}\, v_{up}^{(k)} \;+\; \alpha\, E_b, \\
-v_{down}^{(k+1)} &= (1-\alpha)\,\beta\, v_{up}^{(k)} \;+\; (1-\alpha)\, P_{cs}\, v_{down}^{(k)}.
-\end{align}
-
-Mass lost through dangling nodes (links with no out-edges) is reinjected
-through $E_b$ at each step so the total $\|v^{(k)}\|_1 = 1$ is preserved.
-The final prediction is $v = v_{up} + v_{down}$.
-
-\subsection{Estimation}
-
-The chain is evaluated and tuned on the same 840 calendar (t, t+7 days)
-pairs as the rest of \cref{tab:ladder-tuning}, with the same source and
-target taken from the diffused popularity matrix.
-
- A \emph{tuned} rung fixes $\alpha = 0.15$ and minimizes
-Overall MRE by gradient descent over $\beta \in [0.01, 0.15]$ together
-with the road-type exponents $\alpha_s, \alpha_l$ (unbounded), in three
-modes that mirror the single-phase ladder: lanes-only, speed-only, and
-both.
 \end{document}
