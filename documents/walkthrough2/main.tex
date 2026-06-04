@@ -1,4 +1,4 @@
-\documentclass[sigconf, review, anonymous]{acmart}
+\documentclass[sigconf, review]{acmart}
 
 %% Rights management information. Placeholder values for double-blind
 %% review submission; will be replaced from the rights confirmation
@@ -25,10 +25,12 @@
 \usepackage{subcaption}
 \usepackage{booktabs}
 \usepackage{makecell}
+\usepackage[table]{xcolor}
 
 % Cross-week noise scale; defined once so future renaming touches only this line.
 \newcommand{\NF}{\tau}
 \newcommand{\NFG}{\tau_{\textsf{global}}}
+\newcommand{\R}{\mathbb{R}}
 
 % Inline annotation macros: \hamid{...} prepends "HAMID:" in blue,
 % \jeff{...} prepends "JEFF:" in red.
@@ -40,17 +42,34 @@
 
 \title{A Full Metro-scale Time-Dependent Traffic Route Model}
 
-\author{Anonymous}
+\author{Hamid Shafieasl}
 \affiliation{%
-  \institution{Anonymous}
-  \country{Anonymous}
+  \institution{University of Utah}
+  \city{Salt Lake City}
+  \state{Utah}
+  \country{USA}
 }
-\email{anonymous@example.org}
+\author{Xiaoyue Cathy Liu}
+\affiliation{%
+  \institution{University of Utah}
+  \city{Salt Lake City}
+  \state{Utah}
+  \country{USA}
+}
+\author{Jeff M. Phillips}
+\affiliation{%
+  \institution{University of Utah}
+  \city{Salt Lake City}
+  \state{Utah}
+  \country{USA}
+}
+
+
 
 \renewcommand{\shortauthors}{Anonymous}
 
 \begin{abstract}
-We describe how to train an urban traffic model on a full metropolitan road network, up to 5-minute resolution on a week-long model, starting from GPS probes representing 5\% of all traffic in that area over a 30-day period.  Building such a large model (about 100,000 links, and 2016 time windows for a week), presents many challenges.  First, the 5\% of all traffic (about 2.5 million trips) is still incredibly sparse on this scale.  This means it is essential to smooth out the data and error evaluation, and also not learn too many parameters at risk of over-fitting.  Second, because the scale is so large, to be able to predict feasible routes and not just static distributions, it is important we learn a PageRank-style model.  We demonstrate the model's ability for route forecasting around two changes in traffic behavior.  
+We describe how to train an urban traffic model on a full metropolitan road network, up to 5-minute resolution on a week-long model.  The training data is from GPS probes representing about 5\% of all traffic in that area over a 30-day period.  Building such a large model (about 100,000 links, and 2,016 time windows for a week), presents many challenges.  First, the 5\% of all traffic (about 2.5 million trips) is still incredibly sparse on this scale.  This means it is essential to smooth out the data and error evaluation, and also not learn too many parameters at risk of over-fitting.  Second, because the scale is so large, to be able to both train parameters and also generate feasible routes and not just static distributions, it is important we learn a PageRank-style model.  We demonstrate the model's ability for route forecasting around three changes in traffic behavior.  
 \end{abstract}
 
 %% CCS concepts. Placeholders; final values must be generated at
@@ -83,6 +102,11 @@ We describe how to train an urban traffic model on a full metropolitan road netw
 
 \maketitle
 
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Introduction}
 A full metro-scale traffic model, we posit, should contain the following components.  
 (1)  It should consider traffic on each link of a road network.  Otherwise, it is not compatible with low-level route planning, actual map-matched GPS-traces.  
@@ -128,6 +152,12 @@ Ultimately, we demonstrate an efficient, fine-grain, and full model on a metro s
 % hand. The following sections cover these steps in order, define
 % the chain, and report its evaluation.
 
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Related work}
 \label{sec:related-work}
 
@@ -212,10 +242,15 @@ These methods predominantly use PageRank for analysis, and may even evaluate it 
 
 
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Data and Preprocessing}
 \label{sec:dataset}
 
-\subsection{Probe corpus}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Probe Corpus}
 \label{sec:dataset-corpus}
 
 Our raw input is a corpus of sparse GPS trajectory records collected by Intrix  \jeff{get details from Cathy}
@@ -257,7 +292,7 @@ link, and no network structure has been introduced.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.75\linewidth]{figures/slc_extent.pdf}
+\includegraphics[width=\linewidth]{figures/slc_extent.pdf}
 \Description{Scatter of a random sample of raw GPS fixes
 zoomed around the SLC bounding box; red fixes lie inside the
 box, gray outside.}
@@ -268,7 +303,9 @@ dashed); gray fall outside.}
 \label{fig:slc-extent}
 \end{figure}
 
-\subsection{Map-matching}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Map-Matching}
 \label{sec:mapmatching}
 
 We project the raw GPS fixes onto the road network with the
@@ -276,7 +313,7 @@ Leuven implementation~\cite{meert2018hmm,leuvenmapmatching} of
 the hidden Markov map-matcher of Newson and
 Krumm~\cite{newson2009hmm}. The matcher models the
 GPS-to-link perpendicular distance as a zero-mean Gaussian with
-standard deviation $\sigma$ (in metres); $\sigma$ is the only
+standard deviation $\sigma$ (in meters); $\sigma$ is the only
 parameter and is corpus-dependent. Newson and Krumm
 fit $\sigma \approx 4.07$~m on their Seattle corpus; on our
 sparser SLC corpus we refit to be self-consist. We re-run the
@@ -292,7 +329,6 @@ std is no longer smaller than the measured one.
 \caption{Self-consistency check for the GPS noise scale $\sigma$
 on the SLC corpus.}
 \label{tab:sigma-choice}
-\scriptsize
 \setlength{\tabcolsep}{6pt}
 \begin{tabular}{cccl}
 \toprule
@@ -316,6 +352,7 @@ $\sigma_{\textsf{declared}}$ & $\sigma_{\textsf{std}}$ (filtered)
 $\sigma = 3.5$. We therefore set $\sigma = 3.5$~m throughout
 this paper.
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \paragraph{Two map versions.}
 The pipeline operates on two views of the same SLC road
 network. The \emph{low-resolution} map is the MATSim simulator
@@ -324,10 +361,13 @@ network ($N \approx 99{,}716$ directed links). The
 curved MATSim links subdivided into shorter sub-edges so that
 arterial geometry is captured by collinear sub-edges. The main
 pipeline uses high-resolution matching aggregated to
-low-resolution links; the low-res baseline of
-\cref{sec:baselines} uses low-resolution matching instead.
+low-resolution links; the low-resolution baseline uses
+low-resolution matching instead.
 
-\subsection{Population matrix}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Population Matrix}
 \label{sec:counting}
 
 The final stage of the pipeline aggregates the matched edge visits
@@ -356,6 +396,7 @@ links.
 %\subsection{Counting rule}
 %\label{sec:counting-rule}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \paragraph{Deduplication.}
 The map-matched output of \cref{sec:mapmatching} provides, for
 each trip $r$, a list of linkID (\textsf{lid}) - time pairs $(\textsf{lid}_j, t_j)$, one per
@@ -395,6 +436,7 @@ density of those vehicles: a trip that produces several GPS points while
 crossing one link inside a single $5$-minute window contributes one
 unit, not several.  
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \paragraph{Sparse matrix representation.}
 The matrix $C$ has dimensions $T \times N \approx 8.6 \times 10^8$
 cells, where $T = 8{,}640$ is the number of five-minute bins
@@ -407,6 +449,7 @@ per-column link identifiers, which on the SLC corpus reduces the
 artifact to roughly $7$~MiB.
 
 %\subsection{\texorpdfstring{What $C$ does and does not measure}{What C does and does not measure}}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \paragraph{Limitations of $C$ from Bias and Sparsity.}
 The matrix $C$ summarizes how many trips, drawn from the
 $714{,}594$-trip corpus, traversed each road link in each
@@ -422,6 +465,9 @@ sample (e.g.\ commercial freeway corridors) are over-represented
 relative to links that attract a different population
 (e.g.\ residential cul-de-sacs). The matrix should therefore be
 read as a \emph{prior} on link usage, not as ground-truth volume.
+We note that while our INTRIX sample has its biases, this is likely to be also be true, but with different bias, for other entities capably of collecting data: e.g., Uber drivers, Google Maps users, Amazon deliveries, Tesla cars.  
+
+
 Second, even within the large corpus, sparsity is structural: at any
 single five-minute slot, the median number of GPS fixes per link is
 zero, and only a few hundred to a few thousand links carry any
@@ -435,7 +481,7 @@ weeks it received at least one matched fix. The result is in
 \begin{table}[H]
 \centering
 \caption{How often each (link, bin-of-week) cell was zero across
-the four weeks. }
+the four weeks.  Active means $k \neq 4$.  }
 \label{tab:justif-zeros}
 \small
 \begin{tabular}{lrr}
@@ -453,32 +499,47 @@ total                                      & $201{,}027{,}456$ & $100\%$ \\
 \end{tabular}
 \end{table}
 
+We say a link for a bin-of-week is \emph{active} if for at least one week, at the specified time it has non-zero traffic.  
 $97\%$ of all (link, bin-of-week) cells are zero in every one of
-the four weeks; only $0.15\%$ are active in all four. Most of
-the matrix is therefore not just sparse but \emph{structurally
-empty}, and most ``active'' cells are active in only one of the
-four weeks, i.e.\ represent a single noisy sample rather than a
-stable rate. 
+the four weeks; only $0.15\%$ are active in all four. Most active cells are active in only one of the
+four weeks, i.e., represent a single noisy sample rather than a
+stable rate.   
 
 %The downstream graph-diffusion smoothing described
 %elsewhere in the project addresses this by spreading mass to
 %network neighbors of observed links.
 
-\section{Building the Teleportation Prior}
+
+
+
+
+
+
+
+
+
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Building the Traffic Population Measure}
 \label{sec:prior}
 
 %\subsection{From counts to a prior by row-normalization}
 
 The matrix $C$ is converted into a per-bin
-teleportation prior by row-normalization. For every bin $b$ with
+traffic population prior by row-normalization. For every bin $b$ with
 $\sum_i C_{b, i} > 0$, define
 \[
-E_b(i) \;=\; \frac{C_{b, i}}{\sum_{i'} C_{b, i'}}.
+F_b(i) \;=\; \frac{C_{b, i}}{\sum_{i'} C_{b, i'}}.
 \]
-This makes $E_b$ a probability distribution over the $N$ links of
+This makes $F_b$ a probability distribution over the $N$ links of
 the network: the share of trip-presence mass during bin $b$ that
 landed on link $i$. Time bins with no observed trips are assigned the
-uniform distribution $E_b(i) = \frac{1}{N}$, which acts as an
+uniform distribution $F_b(i) = \frac{1}{N}$, which acts as an
 uninformative fallback.
 
 % The construction of $E_b$ is the entire purpose of the pipeline
@@ -488,21 +549,22 @@ uninformative fallback.
 % $E_b$ that the smoothing of \cref{sec:diffusion} regularizes and the
 % model of \cref{sec:model} consumes.
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \paragraph{Sparsity and Noise Floor.}
-The teleportation prior $E_b$ summarizes what was actually observed
+The traffic population prior $F_b$ summarizes what was actually observed
 on the road network during time bin $b$, but it has two structural
-shortcomings for predictive use. First, $E_b$ is sparse: a typical
+shortcomings for predictive use. First, $F_b$ is sparse: a typical
 $5$-minute window puts non-zero mass on only a few thousand of the
 $N$ links, leaving the rest of the network at exact zero. Second, the empirical signal is noisy at fine
 resolution: the same heavy corridor can be touched by zero observed
 trips in one time bin and several trips in the very next, simply because
-no GPS device happened to emit a fix on that link inside that
+no GPS device happened to emit a location on that link inside that
 $5$-minute slot.  
 
 We measure the scale of this noise from the four-week structure
 of the corpus. For each (link, bin-of-week) cell that the corpus
 saw at least once, we compute the standard deviation  $\NF_{b, i}$ of its
-normalized count $E_b(i)$ across the
+normalized count $F_b(i)$ across the
 four weeks.  
 This captures how much the same link in the same
 time-of-week jitters from week to week. 
@@ -522,12 +584,12 @@ time-of-week jitters from week to week.
 The median of $\NF_{b,i}$ over the $5.95 \times 10^{6}$ active cells in
 \cref{tab:justif-zeros} is $\NFG = 2.65 \times
 10^{-4}$, a single corpus-wide scalar \emph{noise floor}, used as a global yardstick of how much variation to trust.  See Figure \ref{fig:noise-floor-raw}, which shows a log-log plot of count of these $\NF_{b,i}$ values.  
-Differences in $E_b$ much smaller than $\NFG$ are not clearly distinguishable
+Differences in $F_b$ much smaller than $\NFG$ are not clearly distinguishable
 from week-to-week sampling noise.  We use this noise floor to calibrate the smoothing step below.  
 
-\begin{figure}[H]
+\begin{figure}[t]
 \centering
-\includegraphics[width=0.85\linewidth,trim={0 0 203 0},clip]{figures/noise_floor_with_and_without_zeros.pdf}
+\includegraphics[width=1\linewidth]{figures/noise_floor_without_zeros.pdf}
 \Description{Histogram of cross-week std values on the 5.95M active cells.}
 \caption{Distribution of the cross-week standard deviation
 $\NF_{b, i} = \mathrm{std}_w \, E_b^{(w)}(i)$ across the four
@@ -551,6 +613,8 @@ $5.95 \times 10^{6}$ active cells. }
 % }
 
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Diffusion Smoothing of Population Prior}
 \label{sec:diffusion}
 
@@ -559,9 +623,10 @@ lifts every link to a positive value (so the prior never has hard
 zeros) and borrows mass from neighboring links (so a heavy link
 does not disappear because of an empty bin). The smoothing is
 applied row by row to the count matrix
-$C \in \mathbb{Z}_{\ge 0}^{T \times N}$ in three steps.
+$C \in \mathbb{Z}_{\ge 0}^{T \times N}$ in two steps.
 
-\paragraph{Laplace pseudo-count.}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\paragraph{Step 1. Laplace pseudo-count.}
 \label{sec:laplace}
 
 For every time bin $b$ and every link $i$, add a small factor $\alpha=\frac{1}{100}$ to the raw count 
@@ -573,7 +638,8 @@ c_b(i) \;=\; C_{b, i} + \alpha,
 After this step every entry of $c_b$ is positive: the row is dense
 before any further processing.
 
-\paragraph{Single-step graph diffusion.}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\paragraph{Step 2. Single-step graph diffusion.}
 \label{sec:diffusion-step}
 
 Let $P \in \mathbb{R}^{N \times N}$ be the row-stochastic adjacency
@@ -592,28 +658,30 @@ $i$ is therefore averaged with the mass on the links it leads to.
 Finally, normalize each row to a probability distribution:
 \begin{equation}
 \label{eq:diffused-prior}
-\tilde E_b(i) \;=\; \frac{\tilde c_b(i)}{\sum_j \tilde c_b(j)}.
+\tilde F_b(i) \;=\; \frac{\tilde c_b(i)}{\sum_j \tilde c_b(j)}.
 \end{equation}
-The result $\tilde E_b \in \mathbb{R}^{N}$ is the
-\emph{diffused prior}: dense, positive on every road link, and
+The result $\tilde F_b \in \mathbb{R}^{N}$ is the
+\emph{diffused traffic population}: dense, positive on every road link, and
 preserving the order of the heaviest links across the corpus.
-$\tilde E_b$ is used as an alternative to the raw $E_b$
+$\tilde F_b$ is used as an alternative to the raw $F_b$
 throughout the evaluation of \cref{sec:evaluation}.
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Choosing $\gamma$ from the Noise Floor}
 
 We pick the diffusion strength $\gamma$ so that
-the smoothing rarely displaces any single cell by no more than about half of
+the smoothing rarely displaces any single cell by more than about half of
 that cell's own week-to-week sampling noise.   Concretely, for each
-$(\text{link } i,\ \text{bin-of-week } b)$ cell with at least
+active $(\text{link } i,\ \text{bin-of-week } b)$ cell --- that is, with at least
 one observed positive count across the four full corpus weeks
-$w = 1, \ldots, W$ (with $W=4$), define the per-week displacement
+$w = 1, \ldots, W$ (with $W=4$) --- define the per-week displacement
 \[
 D^{(w)}_{b, i}(\gamma)
 \;=\;
-\Big| \, \tilde E^{(w)}_{b, i}(\gamma) - E^{(w)}_{b, i} \, \Big|,
+\Big| \, \tilde F^{(w)}_{b, i}(\gamma) - F^{(w)}_{b, i} \, \Big|,
 \]
-as the difference between the smoothed normalized count $\tilde E^{(w)}_{b, i}(\gamma)$ with parameter $\gamma$, and the observed count in that week $E^{(w)}_{b, i}$.  
+as the difference between the smoothed normalized count $\tilde F^{(w)}_{b, i}(\gamma)$ with parameter $\gamma$, and the observed count in that week $F^{(w)}_{b, i}$.  
 The cell-level displacement averaged across the four weeks
 \[
 D_{b, i}(\gamma)
@@ -666,7 +734,7 @@ The per cell criteria fairs better than the global one, indicating that error de
 % ratio: the median, the $95$th percentile, and the fraction of
 % cells whose ratio exceeds the half-noise threshold.
 
-\begin{table}[H]
+\begin{table}[t]
 \centering
 \caption{Quantiles of the dimensionless displacement-to-noise
 ratio $D_{b, i}(\gamma) / \NF$ across the $5{,}954{,}929$
@@ -693,9 +761,9 @@ $0.12$ & $0.081$ & $0.219$ & $1.27\%$ & $0.073$ & $0.463$ & $4.40\%$ \\
 $0.13$ & $0.087$ & $0.236$ & $1.41\%$ & $0.079$ & $0.498$ & $4.96\%$ \\
 $0.14$ & $0.093$ & $0.253$ & $1.56\%$ & $0.084$ & $0.533$ & $5.53\%$ \\
 $0.15$ & $0.099$ & $0.270$ & $1.73\%$ & $0.090$ & $0.568$ & $6.10\%$ \\
-$\mathbf{0.20}$
-       & $\mathbf{0.130}$ & $\mathbf{0.354}$ & $\mathbf{2.62\%}$
-       & $\mathbf{0.117}$ & $\mathbf{0.741}$ & $\mathbf{8.95\%}$ \\
+\rowcolor{gray!15} 
+$0.20$ & $0.130$ & $0.354$ & $2.62\%$
+       & $0.117$ & $0.741$ & $8.95\%$ \\
 $0.25$ & $0.160$ & $0.436$ & $3.63\%$ & $0.144$ & $0.912$ & $11.87\%$ \\
 $0.30$ & $0.190$ & $0.518$ & $5.39\%$ & $0.171$ & $1.081$ & $14.81\%$ \\
 $0.40$ & $0.248$ & $0.680$ & $9.42\%$ & $0.224$ & $1.413$ & $20.64\%$ \\
@@ -706,10 +774,9 @@ $0.70$ & $0.418$ & $1.145$ & $32.10\%$ & $0.376$ & $2.364$ & $37.83\%$ \\
 \end{table}
 
 
-\jeff{We probably don't need this zero cell data}
-\begin{table}[H]
+\begin{table}[b]
 \centering
-\caption{\textcolor{blue}{[temporary]} Displacement of zero cells
+\caption{Displacement of zero cells
 ($n_{\textsf{zero}} = 1.95 \times 10^{8}$) in units of
 $\NFG = 2.65 \times 10^{-4}$.}
 \label{tab:gamma-zero-cells}
@@ -726,8 +793,9 @@ $0.12$ & $0.0004$ & $0.0004$ & $0.04\%$ \\
 $0.13$ & $0.0004$ & $0.0004$ & $0.04\%$ \\
 $0.14$ & $0.0004$ & $0.0004$ & $0.05\%$ \\
 $0.15$ & $0.0004$ & $0.0004$ & $0.05\%$ \\
-$\mathbf{0.20}$
-       & $\mathbf{0.0004}$ & $\mathbf{0.0004}$ & $\mathbf{0.08\%}$ \\
+\rowcolor{gray!15} 
+$0.20$
+       & $0.0004$ & $0.0004$ & $0.08\%$ \\
 $0.25$ & $0.0004$ & $0.0004$ & $0.10\%$ \\
 $0.30$ & $0.0004$ & $0.0004$ & $0.13\%$ \\
 $0.40$ & $0.0004$ & $0.0004$ & $0.20\%$ \\
@@ -737,7 +805,9 @@ $0.70$ & $0.0003$ & $0.0004$ & $0.46\%$ \\
 \end{tabular}
 \end{table}
 
-\noindent\textcolor{blue}{Reading the zero-cell table. The median
+
+Table \ref{tab:gamma-zero-cells} shows similar statistics for the cells with initial counts of $0$. In this case it only makes sense to use the global noise floor $\NFG$.  
+The median
 and $95$th-percentile ratios are essentially constant at
 $\approx 4 \times 10^{-4}$ across all $\gamma$: at least $95\%$
 of zero cells never see diffusion mass, they only carry the
@@ -745,11 +815,14 @@ Laplace floor $\alpha / N$. The fraction of zero cells exceeding
 the half-noise tolerance is $0.08\%$ at $\gamma = 0.20$
 ($\sim 1.5 \times 10^{5}$ cells out of $1.95 \times 10^{8}$);
 these are the cells immediately adjacent to active links and
-they are the ones that get visibly filled in. The takeaway is
+they are the ones that get filled in. The takeaway is
 that the diffusion is bounded even on the cells where the
 per-cell criterion of \cref{tab:gamma-noise-floor} is undefined:
 it lifts a small adjacency-defined tail of zero cells into the
-noise band and leaves the rest at the Laplace floor.}
+noise band and leaves the rest at the Laplace floor.  
+
+
+
 
 % \paragraph{Choice of $\gamma$.}
 % Under the per-cell criterion the $95$th-percentile ratio first
@@ -765,6 +838,7 @@ noise band and leaves the rest at the Laplace floor.}
 % the global criterion, and the $95$th-percentile ratio crosses
 % the half-noise bound only mildly ($0.741$).
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \paragraph{Violator tail at $\gamma = 0.20$.}
 To see how far past the tolerance the violators sit, we sweep
 the threshold $\eta$ in
@@ -795,16 +869,19 @@ cell by more than its own week-to-week jitter.
 % corpus median).  
 
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Evaluation Mechanism}
 \label{sec:evaluation-framework}
 
-Now given the diffused population prior $\tilde E_b$, which we use as our ground truth proxy $t_i = \tilde E_b(i)$, we set up how we measure our model.  Since the population of each cell still varies significantly at different scales, we use a relative error for a prediction $p_i$ at a time bin $i$ is, 
+Now given the diffused population prior $\tilde F_b$, which we use as our ground truth proxy $t_i = \tilde F_b(i)$, we set up how we measure our model.  Since the population of each cell still varies significantly at different scales, we use a relative error for a prediction $p_i$ at a time bin $i$ is, 
 \[
 r_i \;=\; \frac{|t_i - p_i|}{t_i + \varepsilon},
 \]
-where $\varepsilon = 10^{-6}$ is included to add stability.  Note this less than $\NFG/100$, less than the effect of $\frac{1}{10}$th of a trip on the busiest cell.  Then the overall score at that time bin $b$ is the mean relative error
+where $\varepsilon = 10^{-6}$ is included to add stability.  Note that this $\varepsilon$ is less than $\NFG/100$, less than the effect of $\frac{1}{10}$th of a trip on the busiest cell.  
+Then the \emph{overall score} at a time bin $b$ is the mean relative error
 \[
-\textsf{MRE}_{\textsf{overall}} \;=\; \frac{1}{N} \sum_{i = 1}^{N} r_i.
+\textsf{MRE} \;=\; \frac{1}{N} \sum_{i = 1}^{N} r_i.
 \]
 
 
@@ -882,9 +959,11 @@ where $\varepsilon = 10^{-6}$ is included to add stability.  Note this less than
 % \end{table}
 
 
-\paragraph{One week to next.}
-We frame our predictions by using data from one week to predict the next.  This is similar to the noise floor, where we calibrated against the raw data set statistics predicting the next week at the same link and same time/day.  
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\paragraph{One week to next forecast.}
+We frame our predictions by using data from one week to predict (or forecast) the next.  This is similar to the noise floor, where we calibrated against the raw data set statistics predicting the next week at the same link and same time/day.  
 For our prediction, we use a forecast for a model built on one week, predicting to the same time period exactly 7 days forward (move forward time index by 2016).  
+For global analysis, we train parameters on the first 23 days of the dataset, aggregate them to the days/times of a single week, and then predict on the final seven days of the week, averaged across all $2{,}016$ of the $5$ minute time windows.  
 
 % \paragraph{Three comparisons.}
 % For every target bin $t$ in the evaluation sample we compute the
@@ -912,90 +991,103 @@ For our prediction, we use a forecast for a model built on one week, predicting 
 % keeps every comparison apples-to-apples within a single choice
 % of prior.
 
-\paragraph{Sampling protocol.}
-For each of the seven days of the week (Mon, $\ldots$, Sun) we
-draw $120$ source bins uniformly at random, for a total of
-$7 \times 120 = 840$ target bins.  A bin is eligible only if
-both the bin itself and its $+7$-day sibling exist in the
-matrix. In our $30$-day corpus this restricts source bins to
-days $1$--$23$ (Sept~$1$ to Sept~$23$) paired with siblings in
-days $8$--$30$ (Sept~$8$ to Sept~$30$); the source bins
-therefore span weeks $1$--$3$ and the first days of week $4$,
-not just the first week. The seed is fixed ($7$), so the
-sample is identical across configurations.
-\jeff{why do we only evaluate on a sample?}
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \paragraph{Sampling protocol.}
+% For each of the seven days of the week (Mon, $\ldots$, Sun) we
+% draw $120$ source bins uniformly at random, for a total of
+% $7 \times 120 = 840$ target bins.  A bin is eligible only if
+% both the bin itself and its $+7$-day sibling exist in the
+% matrix. In our $30$-day corpus this restricts source bins to
+% days $1$--$23$ (Sept~$1$ to Sept~$23$) paired with siblings in
+% days $8$--$30$ (Sept~$8$ to Sept~$30$); the source bins
+% therefore span weeks $1$--$3$ and the first days of week $4$,
+% not just the first week. The seed is fixed ($7$), so the
+% sample is identical across configurations.
+% \jeff{why do we only evaluate on a sample?}
 
 
+
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{PageRank Model for Link-Level Traffic}
 \label{sec:pagerank}
 
 We now describe our PageRank model for representing traffic patterns on our metro-scale network.  
-Recall that PageRank~\cite{} was developed as a model of a random surfer on the internet; the resulting distribution of where the random surfer would visit in the limit formed the basis for Google's groundbreaking search engine.  In this way it models the outgoing links of a webpage as directed links in a graph, with pages as nodes; these form the probability transition matrix $P$.  
+Recall that PageRank~\cite{} was developed as a model of a random surfer on the internet; the resulting distribution of where the random surfer would visit in the limit formed the basis for Google's groundbreaking search engine.  In this way it models the outgoing links of a webpage as directed edges in a graph, with pages as $N$ nodes; these form the probability transition matrix $P \in \R^{N \times N}$.  The $i$th column $P_i \in \R^N$ is a probability distribution for node $i$ where $P_i[j]$ encodes the probability that a random walk at node $i$ will be in node $j$ in the next step. In basic PageRank, these probabilities are set uniformly among the outgoing hyperlinks of a webpage, and $P$ is very sparse.  
 
-The most natural baseline on the popularity prior $E_b$ is the
-single-phase PageRank chain with $E_b$ as the
-teleportation distribution. Given the row-stochastic adjacency
-$P$ of the directed road graph (each row of $P$ being uniform over
-the outgoing road neighbors of one link) and a teleport
-probability $p \in (0, 1)$, the iteration is
+Just using $P$ does not define an ergodic Markov Chain, so a key innovation is having the random surfer \emph{teleport} to a random webpage with some probability $p$ (usually about $0.15$).  This makes the random walks follow a geometric distribution in length, with expected length $1/p$ (about $7$ steps on average).  It also makes the true transition probability dense, but still allowing efficient simulation of forward steps from initiate state $v_n$ as:
 \begin{equation}
-\label{eq:single-phase-iter}
-v_{n+1} \;=\; p\,E_b \;+\; (1 - p)\,P^{\top}\,v_n,
+\label{eq:base-PR}
+ v_{n+1} = (p E + (1 - p) P) v_n.
 \end{equation}
-applied until $\|v_{n+1} - v_n\|_1 < 10^{-7}$, with a safety cap
-of $300$ iterations. The cap is conservative: the power
-iteration converges geometrically at rate $1 - p$, so the
-theoretical worst-case number of iterations to reach L1 error
-$10^{-7}$ is
-\begin{equation}
-\label{eq:iter-bound}
-n^{\star} \;=\; \frac{\ln 10^{-7}}{\ln (1 - p)}
-\;=\; \frac{\ln 10^{-7}}{\ln 0.9492} \;\approx\; 310,
-\end{equation}
-which sits just above $300$. We checked empirically on $1{,}500+$
-random target bins and the chain converged before $300$ iterations
-in every single case; the observed maximum was $254$ iterations and
-the median was $209$.
-The cap is therefore never hit in practice and the recorded
-results are at full $10^{-7}$ tolerance throughout. At every step
-the walker teleports back to the prior with probability $p$ and
-otherwise takes a uniform random step along an outgoing road
-edge. The stationary distribution $v^{\star}$ of
-\eqref{eq:single-phase-iter} is the single-phase prediction for
-bin $b$.
+Here $E \in \R^{N \times N}$ represents the uniform random distribution, so it is the $1/N$ times the all $1$ matrix.  However, note that this step can be implemented by replacing $p E v_n$ with a fixed vector $e \in \R^N$ that has $p/N$ in each coordinate.  
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Baseline Traffic PageRank Model}
+\label{sec:baseline-pagerank}
+
+Our baseline traffic model is to adopt this PageRank model to our large roughly $100,000$ ($N = 99,716$) link network.  Since our population data mapped to the road network links, these links map to the \emph{nodes} in the graph, not the edges.  The intersections (and direct connection between consecutive links) are the edges.  This switch (links $\neq$ edges) is slightly un-intuitive, but allows for the precise sort of modeling we seek, and aligns with our population date mapping to links.  
+
+Then we can define the probability transition matrix $P \in \R^{N \times N}$ by the road network; we make the probability transition uniform $1/k$ among all ($k$) options from a directed link.  
+Then with $E \in \R^{N \times N}$ with each entry $E_{i,j} = 1/N$ our transition update follows \eqref{eq:base-PR} precisely.  
+
+In addition to this modeling being able to generate realistic routes, it can also generate global traffic distributions.  By iteratively applying \eqref{eq:base-PR}, the limit $\lim_{n \to \infty} v_n = v_{\star}$ provides the modeled distribution of traffic across all road network links.  
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \paragraph{Calibrating $p$ from the trip corpus.}
-The chain in \eqref{eq:single-phase-iter} is a geometric absorption
+We next need to calibrate $p$ from the trip corpus.  
+The chain in \eqref{eq:base-PR} is a geometric absorption
 process: the number of graph steps before a teleport is
 $\textsf{Geom}(p)$ on $\{0, 1, 2, \ldots\}$ with mean
 $\frac{1 - p}{p}$. We match $p$ to the empirical mean trip length
-$\mathbb{E}[K_{\textsf{total}}]$ by method-of-moments, exactly as
-the two-phase chain matches $\beta$ and $\rho$ to the per-phase
-lengths:
-\begin{equation}
-\label{eq:single-phase-p}
+$\mathbb{E}[K_{\textsf{total}}]$ by method-of-moments:
+\[
 p \;=\; \frac{1}{1 + \mathbb{E}[K_{\textsf{total}}]}.
-\end{equation}
-On the noise=3.5 matched corpus
+\]
+On the map-matched corpus
 ($714{,}594$ trips, all route lengths), the empirical mean is
 $\mathbb{E}[K_{\textsf{total}}] = 18.68$, which gives
-$p = 0.0508$. The chain has only this one free parameter; the
-``damping factor'' $1 - p = 0.9492$ that some authors report
-is just a relabeling. \Cref{fig:single-phase-hist} shows the
+$p = 0.0508$.  We thus use this for this $p = 0.0508$ going forward.  
+\Cref{fig:single-phase-hist} shows the
 empirical $K_{\textsf{total}}$ histogram with the
-$\textsf{Geom}(p = 0.0508)$ reference overlaid.
-
+$\textsf{Geom}(p = 0.0508)$ reference overlaid, illustrating the nice geometric fit to true route length distribution.   
+ 
 \begin{figure}[H]
-\centering
 \includegraphics[width=\linewidth]{figures/single_phase_histogram.pdf}
 \Description{Log-y histogram of the per-trip total link count
 K_total on the noise=3.5 matched corpus of 714,594 trips, overlaid
 with a geometric reference curve at p=0.0508.}
 \caption{Empirical histogram of trip length $K_{\textsf{total}}$
-on the $714{,}594$-trip corpus, with the matched
+on the $714{,}594$-trip corpus, with the
 $\textsf{Geom}(p = 0.0508)$ overlay.}
 \label{fig:single-phase-hist}
 \end{figure}
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\paragraph{Implementation Details.}
+The sparse probability transition probability matrix $P$, which as with the map-matched observation matrix $C$, we represent as a sparse matrix.  It describes the directed road graph: each column of $P$ being uniform over the outgoing road neighbors of one link.  Then using a teleport
+probability $p = 0.0508$, the iteration in \eqref{eq:base-PR} is applied until 
+$\|v_{n+1} - v_n\|_1 < 10^{-7}$, 
+with a safety cap of $n=300$ iterations. The cap is conservative: the power
+iteration converges geometrically at rate of at least $1 - p$, so the
+theoretical worst-case number of iterations to reach L1 error
+$10^{-7}$ is
+\[
+n^{\star} \;=\; \frac{\ln 10^{-7}}{\ln (1 - p)}
+\;=\; \frac{\ln 10^{-7}}{\ln 0.9492} \;\approx\; 310.
+\]
+We checked empirically on $1{,}500+$ random target bins and the chain converged before $300$ iterations
+in every single case; the observed maximum was $254$ iterations and the median was $209$.
+
 
 % \paragraph{Why this is a fair baseline.}
 % Three reasons. First, single-phase PageRank is the standard
@@ -1010,47 +1102,155 @@ $\textsf{Geom}(p = 0.0508)$ overlay.}
 % metric, and the same three comparisons as the two-phase chain, per
 % the evaluation contract.
 
-\subsection{Why single-phase fails on our data}
-\label{sec:whyfails-singlephase}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{PageRank Model with Informed Teleportation}
+\label{sec:informed-tele}
+Beyond this baseline model, the first modification we make is so that the teleportation step can be more informed than the default uniform.  That is, which links to start routes are not uniform.  Its quite rare to \emph{start} a route on a busy freeway, and it should be more likely to start one from a grocery store parking lot.  
 
-Evaluating \eqref{eq:single-phase-iter} on the same $840$ target
-bins as \cref{tab:eval} ($120$ per weekday, seed $7$, all three
-eps configurations) gives the numbers in
-\cref{tab:single-phase}.
+For each time window $b$ we can track all routes that start in that period.  After normalizing these counts we can get a probability distribution $e_b \in \R^N$.  Like the traffic population matrix $F_b$, this also faces an extreme sparsity challenge.  So we apply the same graph diffusion method (as in Section \ref{sec:laplace}) to get a diffuse route initialization distribution $\tilde e_b$.  
 
-\begin{table}[H]
-\centering
-\caption{Single-phase PageRank baseline (chain
-\eqref{eq:single-phase-iter} with $p = 0.0508$) on
-$840$ target bins ($120$ per weekday, seed $7$). Conventions
-match \cref{tab:eval}.}
-\label{tab:single-phase}
-\setlength{\tabcolsep}{6pt}
-\renewcommand{\arraystretch}{1.30}
-\begin{tabular}{@{}lccc@{}}
-\toprule
-Comparison
-& \shortstack[c]{No diffusion\\$\varepsilon\!=\!10^{-6}$}
-& \shortstack[c]{Diffused\\$\varepsilon\!=\!10^{-6}$}
-& \shortstack[c]{Diffused\\$\varepsilon\!=\!0$} \\
-\midrule
-1. dataset$\to$dataset (next week) & $5.82$ & $0.68$ & $0.90$ \\
-2. dataset$\to$model (forecast)    & $8.70$ & $1.07$ & $1.46$ \\
-\bottomrule
-\end{tabular}
-\end{table}
+Our first innovation replaces the uniform random teleportation matrix with the population diffusion model of routes $\tilde E_b$, where each column is $\tilde e_b$.  Then the simulation update step is
+\begin{equation}
+\label{eq:inf-PR}
+v_{n+1} = (p \tilde E_b + (1 - p) P) v_n = p \tilde e_b + (1-p) P v_n.
+\end{equation}
+This accomplishes two important aspects.  First, it adapts the simulation to start routes at more realistic locations informed by actual data.  Second, allows the model to adapt to the specific time-window $b$; so the traffic model can generate different routes at different times during the day or week.  
 
-Two readings of \cref{tab:single-phase}, paired against the
-two-phase numbers in \cref{tab:eval}.
 
-\paragraph{The forecast loses to the noise floor.}
-Forecast Overall MRE is $1.07$ against a noise floor of $0.68$
-(diffused, $\varepsilon = 10^{-6}$). The single-phase chain
-therefore fails the contract's pass criterion that forecast
-must not be worse than last-week-at-the-same-slot. The
-two-phase chain in \cref{tab:eval} reaches forecast Overall MRE
-of $1.04$ on the same comparison, only marginally better than
-the single-phase baseline.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{PageRank Model with Learned Transitions}
+\label{sec:learned-transitions}
+
+We next apply machine learning to learn a more informed probability transition matrix $P$.  A potentially unrealistic part of a PageRank model is that the routes are random walks, while realistic routes are directed and meaningful.   However, the Markov chain modeling requires the \emph{Markov} properties that each step is memoryless, so we cannot use this entire set up if we inform an origin-destination pair.  However, we can adapt the transition probabilities to reflect more realistic to choices that model traffic.  
+We do so with two modeling aspects following the principals that routes tend to move towards higher-throughput links.  
+
+These aspects leverage physical throughput attributes of links $\ell$ of the graph: 
+flow speed $s(\ell)$ and a lane count $\lambda(\ell)$. Let
+$\bar s(\ell) = s(\ell)/\bar s$ and
+$\bar \lambda(\ell) = \lambda(\ell)/\bar \lambda$ denote these
+attributes normalized by their per-link mean over the network.  
+%The third aspect captures how straight the transition is:  
+%$a(\ell,\ell') = (1 + \cos \theta(\ell,\ell') + \delta)$ is the angular similarity between the directions of travel for the current link $\ell'$ and the potential next link $\ell$.  It is normalized so that if they are in the same direction $a(\ell,\ell') = 1$, if they are perpendicular, then $a(\ell,\ell') = 1/2$, and of they are the opposite direction then $a(\ell,\ell') = \delta$ (so a small U-turn probability is allowed; we set $\delta = 0.05$).  
+%We similarly normalize this $\bar{a}(\ell,\ell') = a(\ell,\ell')/\bar a$ where $\bar a$ is the average over the network.  
+
+Now given from a link $\ell_i$ the weight of each potential outgoing link $\ell_j$ is parameterized by $2$ parameters $\alpha_s$ and $\alpha_l$ so that
+\[
+w(j) = \bar s(\ell_j)^{\alpha_s}  \bar \lambda(\ell_j)^{\alpha_l}.
+%\bar a(\ell_j,\ell_i)^{\alpha_a}.  
+\]
+Finally, we can set the transition probability matrix from $i$ to $j$ among all outgoing edges $J_i$ from $i$ as
+\[
+P_{j,i} = \frac{w(j)}{\sum_{j \in J_i} w(j)}.
+\]
+And $P$ retains its sparsity with $P_{j,i}=0$ for $j \notin J_i$.  
+
+It remains to set the values for $\alpha = (\alpha_s, \alpha_l)$.  These values $\alpha_s, \alpha_l$ are larger when there is a preference to turn onto a link with higher throughput (because of higher flow-rate e.g., speed limit, or number of lanes).  A negative value in $\alpha_s, \alpha_l$ would indicate a preference to turn onto smaller roads.  
+%Similarly, a large $\alpha_a$ value would indicate a preference to stay on straighter roads; which we expect for more purposeful driving routes.  
+
+Towards determining these, we set up a loss function 
+\[
+\mathcal{L}(\alpha) = \sum_{b \in [T]} \sum_{i \in [N]} \frac{| v_\star(\tilde E_b, \alpha)[i] - \tilde F_b[i]| }{\tilde F_b[i] + \varepsilon}
+\]
+where $v_\star(\tilde E_b, \alpha)$ is the converged-to PageRank vector for a Markov chain following \eqref{eq:inf-PR}, where $P$ is defined using the specified $\alpha$ parameters.  
+Given the diffused starting positions $\tilde E_b$, the goal is to match the diffused observed traffic population $\tilde F_b$.  
+It is the MRE (mean relative error), summed over all time periods $b$; thus the goal is to set these $\alpha$ parameters globally for all timescales; that is to learn the driving preferences for the metro area regardless of the time of day.    While it may be the case that these driving patterns change throughout the day or week, we opt to learn a smaller set of parameters with goal of not overfitting.  Moreover, this training step is somewhat computationally expensive, and repeating it 8000+ times, would be exorbitant.  
+
+Finally, we can choose these parameters $\alpha^* = \arg \min_{\alpha} \mathcal{L}(\alpha)$.  We do this with gradient descent.  We use \texttt{autograd} to determine the gradient, and try several random restarts to confirm it reliably finds the same minimal parameter choices.  
+
+
+
+% The explicit construction of $P^{\uparrow}, P^{\downarrow}$ is as
+% follows. Each link $\ell$ in the
+% network carries two physical attributes from the graph: a free
+% flow speed $s(\ell)$ and a lane count $\lambda(\ell)$. Let
+% $\bar s(\ell) = s(\ell)/\bar s$ and
+% $\bar \lambda(\ell) = \lambda(\ell)/\bar \lambda$ denote these
+% attributes normalized by their per-link mean over the network,
+% and define the per-link physics weight
+% \begin{equation}
+% \label{eq:phase-weight}
+% w^{\uparrow}(\ell)
+% \;=\; \bar s(\ell)^{\alpha_s}\,\bar \lambda(\ell)^{\alpha_l},
+% \qquad
+% w^{\downarrow}(\ell)
+% \;=\; \bar s(\ell)^{-\alpha_s}\,\bar \lambda(\ell)^{-\alpha_l},
+% \end{equation}
+% with two real exponents $\alpha_s, \alpha_l \in \mathbb{R}$ that
+% parametrize how strongly the chain favors fast or wide links in
+% each phase. Each kernel is then a $w$-weighted row-stochastic
+% walk on the directed road graph, made column-stochastic by
+% transpose:
+% \begin{equation}
+% \label{eq:phase-kernel}
+% P^{\uparrow}_{j, i}
+% \;=\;
+% \frac{w^{\uparrow}(j)\,\mathbf{1}\!\left[\, i \to j \,\right]}
+%      {\sum_{j' : i \to j'} w^{\uparrow}(j')},
+% \end{equation}
+% where $i \to j$ denotes ``there is a directed road link from $i$
+% to $j$''; $P^{\downarrow}_{j, i}$ is defined identically with
+% $w^{\downarrow}$ in place of $w^{\uparrow}$. The down-phase
+% weight is the up-phase weight with $(\alpha_s, \alpha_l)$
+% sign-flipped, so the two phases are mirrored: when the up phase
+% prefers slow or narrow links the down phase prefers fast or wide
+% links, and vice versa. The default chain used throughout the
+% evaluation has $\alpha_s = \alpha_l = 0$, which makes
+% $w^{\uparrow}, w^{\downarrow} \equiv 1$ and both kernels reduce
+% to the uniform-over-out-neighbors walk on the directed road
+% graph; the speed/lane exponents come back as tuning knobs in the
+% ladder of \cref{sec:ladder}.
+
+
+
+
+
+
+
+
+% \subsection{Why single-phase fails on our data}
+% \label{sec:whyfails-singlephase}
+
+% Evaluating \eqref{eq:single-phase-iter} on the same $840$ target
+% bins as \cref{tab:eval} ($120$ per weekday, seed $7$, all three
+% eps configurations) gives the numbers in
+% \cref{tab:single-phase}.
+
+% \begin{table}[H]
+% \centering
+% \caption{Single-phase PageRank baseline (chain
+% \eqref{eq:single-phase-iter} with $p = 0.0508$) on
+% $840$ target bins ($120$ per weekday, seed $7$). Conventions
+% match \cref{tab:eval}.}
+% \label{tab:single-phase}
+% \setlength{\tabcolsep}{6pt}
+% \renewcommand{\arraystretch}{1.30}
+% \begin{tabular}{@{}lccc@{}}
+% \toprule
+% Comparison
+% & \shortstack[c]{No diffusion\\$\varepsilon\!=\!10^{-6}$}
+% & \shortstack[c]{Diffused\\$\varepsilon\!=\!10^{-6}$}
+% & \shortstack[c]{Diffused\\$\varepsilon\!=\!0$} \\
+% \midrule
+% 1. dataset$\to$dataset (next week) & $5.82$ & $0.68$ & $0.90$ \\
+% 2. dataset$\to$model (forecast)    & $8.70$ & $1.07$ & $1.46$ \\
+% \bottomrule
+% \end{tabular}
+% \end{table}
+
+% Two readings of \cref{tab:single-phase}, paired against the
+% two-phase numbers in \cref{tab:eval}.
+
+% \paragraph{The forecast loses to the noise floor.}
+% Forecast Overall MRE is $1.07$ against a noise floor of $0.68$
+% (diffused, $\varepsilon = 10^{-6}$). The single-phase chain
+% therefore fails the contract's pass criterion that forecast
+% must not be worse than last-week-at-the-same-slot. The
+% two-phase chain in \cref{tab:eval} reaches forecast Overall MRE
+% of $1.04$ on the same comparison, only marginally better than
+% the single-phase baseline.
 
 % \paragraph{Why the single-phase mixes too much.}
 % At $p = 0.0508$ the chain takes on average
@@ -1068,197 +1268,222 @@ the single-phase baseline.
 % why the two-phase chain in \cref{tab:eval} preserves the
 % heavy-traffic head where the single-phase baseline does not. The next section formalizes this two-phase chain.
 
-\section{Two-phase {PageRank} chain}
-\label{sec:model}
 
-The two-phase chain of this section turns a popularity prior (the
-raw $E_b$ from \cref{sec:counting} or the diffused $\tilde E_b$
-from \cref{sec:diffusion}) into a per-link prediction by running a
-discrete-time Markov chain on a road-network state space. Its
-design departs from a single-phase chain (one state per link) in
-one important respect: each road link $i \in \{1, \ldots, N\}$ is
-represented by \emph{two} states, an \emph{up-phase} state
-$i^{\uparrow}$ and a \emph{down-phase} state $i^{\downarrow}$, so
-the chain has $2N$ states in total. The doubled state space lets
-the chain track two distinct regimes that a vehicle on the network
-can occupy, and lets each regime contribute its own characteristic
-mass to the link-level prediction.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Two-phase {PageRank} Model}
+\label{sec:2p-PR}
 
-\subsection{What the two phases represent}
-\label{sec:two-phases}
+The final aspect of our model is based on the observation that most traffic routes gradually move to higher throughout links from the origin, but the destination is usually not on these high throughput links.  As it approaches a destination, the route tends to move towards lower throughput links.  However, the memoryless aspect of PageRank models does not directly allow for a goal destination or these two phases.  
 
-The two phases of the chain correspond to two qualitatively
-different regimes of a vehicle's behavior on the road network:
-
-\begin{itemize}
-  \item The \emph{up phase} represents a vehicle that has just
-        appeared in the network and is choosing where to go: it has
-        not yet committed to traveling along a specific corridor.
-        Steps within the up phase let mass redistribute along the
-        graph before any actual travel begins.
-  \item The \emph{down phase} represents a vehicle that is
-        \emph{traveling} along the network, advancing from one link
-        to the next according to road geometry. Steps within the
-        down phase trace out the kind of multi-link path that a real
-        trip would follow.
-\end{itemize}
-
-A single-phase Markov chain on the $N$ physical links cannot
-distinguish these two regimes: it would force a single transition
-rule to govern both ``where does mass come from'' and ``where does
-mass travel to'', and any stationary distribution it produced would
-fold the two contributions into one number per link. The two-phase
-chain keeps them separate, so that the steady-state mass on each
-physical link decomposes into a contribution from up-phase
-deliberation and a contribution from down-phase travel, both
-controlled by their own transition rule. The next subsections
-specify those transition rules and the parameters that govern them.
-
-\subsection{Transition rule}
-\label{sec:transition}
-
-The state space is $\{1, \ldots, N\} \times \{\uparrow, \downarrow\}$:
-every road link $i$ is duplicated into an up-state $i^{\uparrow}$
-and a down-state $i^{\downarrow}$. A mass vector on this space is
-a probability over $2N$ entries (it sums to one), and the chain's
-stationary distribution decomposes naturally into an up-phase
-share $v^{\uparrow}(i)$ and a down-phase share $v^{\downarrow}(i)$
-per link.
-
-The chain is fully specified by the rule that takes a current state
-to its next state. From an up-phase state $i^{\uparrow}$ the rule is
-\begin{itemize}
-  \item with probability $1 - \beta$, the chain stays in the up
-        phase and moves to one of $i$'s graph neighbors
-        $j^{\uparrow}$, with the choice governed by an up-phase
-        transition matrix $P^{\uparrow} \in \mathbb{R}^{N \times N}$;
-  \item with probability $\beta \in (0, 1)$, the chain commits to
-        traveling along link $i$ and moves to the down-phase state
-        $i^{\downarrow}$ on the same link.
-\end{itemize}
-From a down-phase state $i^{\downarrow}$ the rule is
-\begin{itemize}
-  \item with probability $1 - \rho$, the chain stays in the down
-        phase and moves to a graph neighbor $j^{\downarrow}$,
-        governed by a down-phase transition matrix
-        $P^{\downarrow} \in \mathbb{R}^{N \times N}$;
-  \item with probability $\rho \in (0, 1)$, the trip ends and the
-        chain teleports back to a fresh up-phase state drawn from
-        the prior $E_b$: it jumps to $j^{\uparrow}$ with probability
-        $E_b(j)$.
-\end{itemize}
-We adopt the \emph{column-stochastic} convention throughout: column
-$i$ of any of these matrices stores the probability distribution
-over next states, given that the chain is currently in state $i$.
-In particular, $P^{\uparrow}$ and $P^{\downarrow}$ are column-stochastic
-matrices supported on the directed road graph: the entry
-$P^{\uparrow}_{j, i}$ is the probability of moving to link $j$ from
-link $i$ in the up phase, and is zero whenever there is no road
-link from $i$ to $j$ (and similarly for $P^{\downarrow}$). Below,
-$v$ denotes the chain's mass vector at iteration step $n$; like
-$E_b$, it is a probability over the $2N$ states (so
-$\sum_i v^{\uparrow}(i) + \sum_i v^{\downarrow}(i) = 1$). The
-chain's prediction for link $i$ is the sum
-$v^{\uparrow}(i) + v^{\downarrow}(i)$, itself a probability over
-the $N$ links.
-
-The explicit construction of $P^{\uparrow}, P^{\downarrow}$ is as
-follows. Each link $\ell$ in the
-network carries two physical attributes from the graph: a free
-flow speed $s(\ell)$ and a lane count $\lambda(\ell)$. Let
-$\bar s(\ell) = s(\ell)/\bar s$ and
-$\bar \lambda(\ell) = \lambda(\ell)/\bar \lambda$ denote these
-attributes normalized by their per-link mean over the network,
-and define the per-link physics weight
-\begin{equation}
-\label{eq:phase-weight}
-w^{\uparrow}(\ell)
-\;=\; \bar s(\ell)^{\alpha_s}\,\bar \lambda(\ell)^{\alpha_l},
-\qquad
-w^{\downarrow}(\ell)
-\;=\; \bar s(\ell)^{-\alpha_s}\,\bar \lambda(\ell)^{-\alpha_l},
-\end{equation}
-with two real exponents $\alpha_s, \alpha_l \in \mathbb{R}$ that
-parametrize how strongly the chain favors fast or wide links in
-each phase. Each kernel is then a $w$-weighted row-stochastic
-walk on the directed road graph, made column-stochastic by
-transpose:
-\begin{equation}
-\label{eq:phase-kernel}
-P^{\uparrow}_{j, i}
-\;=\;
-\frac{w^{\uparrow}(j)\,\mathbf{1}\!\left[\, i \to j \,\right]}
-     {\sum_{j' : i \to j'} w^{\uparrow}(j')},
-\end{equation}
-where $i \to j$ denotes ``there is a directed road link from $i$
-to $j$''; $P^{\downarrow}_{j, i}$ is defined identically with
-$w^{\downarrow}$ in place of $w^{\uparrow}$. The down-phase
-weight is the up-phase weight with $(\alpha_s, \alpha_l)$
-sign-flipped, so the two phases are mirrored: when the up phase
-prefers slow or narrow links the down phase prefers fast or wide
-links, and vice versa. The default chain used throughout the
-evaluation has $\alpha_s = \alpha_l = 0$, which makes
-$w^{\uparrow}, w^{\downarrow} \equiv 1$ and both kernels reduce
-to the uniform-over-out-neighbors walk on the directed road
-graph; the speed/lane exponents come back as tuning knobs in the
-intervention experiment of \cref{sec:intervention}.
-
-Equivalently, ordering the $2N$ states as
-$\big(1^{\uparrow}, \ldots, N^{\uparrow},\,
-      1^{\downarrow}, \ldots, N^{\downarrow}\big)$,
-the transition matrix of the chain is the column-stochastic
-$2N \times 2N$ block matrix
+Towards addressing this, we describe a two-phase PageRank model.  Instead of a $N$ state model, this becomes a $2N$ state model, where each link can be visited in the \emph{up} phase as the route tends to move towards higher throughput links as it leave the origin, or in the \emph{down} phase as the route tends to move towards lower throughput links as it approaches the destination.  
+The up phase is now governed by a probability transition matrix $P^\uparrow$ with parameters $\alpha^\uparrow = (\alpha_s^\uparrow, \alpha_l^\uparrow)$, and the down phase by a separate $P^\downarrow$ with its own parameters $\alpha^\downarrow = (\alpha_s^\downarrow, \alpha_l^\downarrow)$.  
+Then instead of a single parameter $p$ to govern the probability the route ends, we need two parameters: $\beta$ and  $\rho$.  The $\beta$ parameter is the probability that when in the up phase the route transitions to the down phase, and $\rho$ parameter is the probability that when in the down phase the route reaches its destination and ends.  While after the down phase ends, the route needs to teleport to a new starting spot (based on $\tilde E_b$), when the up phase ends the route should stay on the same link as before.  We can capture this entire in a transition probability matrix $M_b \in \R^{2N \times 2N}$, where each component is an $N \times N$ block:
 \begin{equation}
 \label{eq:M-block}
 M_b \;=\;
 \begin{pmatrix}
-(1 - \beta)\, P^{\uparrow} & \rho\, E_b\, \mathbf{1}^{\top} \\[6pt]
+(1 - \beta)\, P^{\uparrow} & \rho\, \tilde E_b\, \mathbf{1}^{\top} \\[6pt]
 \beta\, I                  & (1 - \rho)\, P^{\downarrow}
 \end{pmatrix},
 \end{equation}
-where $I$ is the $N \times N$ identity, $\mathbf{1} \in
-\mathbb{R}^{N}$ is the all-ones column vector, and $E_b \in
-\mathbb{R}^{N}$ is the teleportation prior treated as a column
-vector. The rank-1 block $\rho\, E_b\, \mathbf{1}^{\top}$ encodes
-the ``every down-state gives mass back to the up phase via the same
-prior $E_b$'' rule: each of its columns is the column vector
-$\rho\, E_b$. With this convention the chain's mass distribution
-$v \in \mathbb{R}^{2N}$ evolves as the simple matrix-vector product
+where $I$ is the $N \times N$ identity and $\mathbf{1} \in
+\mathbb{R}^{N}$ is the all-ones column vector. 
+With this convention the Markov chain's mass distribution
+$v \in \mathbb{R}^{2N}$ evolves as the simple matrix-vector product (which can be still implemented block-wise with efficient sparse operations):
 \begin{equation}
-\label{eq:iter}
-v_{n+1} \;=\; M_b\, v_n,
+\label{eq:2P-iter}
+v_{n+1} \;=\; M_b\, v_n.  
 \end{equation}
-with no transpose required at any step of the iteration.
+
+Note that since state distribution $v_n$ and the converged to $v_\star$ is now $2N$-dimensional, in order to compare to a desired diffused population state $\tilde F_b \in \R^N$, we need to ``fold" $v_\star$ into $\R^{2N}$.  That is let $\hat v_\star \in \R^N$ be defined for index $i \in [N]$ as $\hat v_\star[i] = v_\star[i] + v_\star[N+i]$.  That is we add together the probabilities of being in the up state $i^\uparrow = i$ and the down state $i^\downarrow = N+i$.  
+
+
+
+
+
+% The two-phase chain of this section turns a popularity prior (the
+% raw $E_b$ from \cref{sec:counting} or the diffused $\tilde E_b$
+% from \cref{sec:diffusion}) into a per-link prediction by running a
+% discrete-time Markov chain on a road-network state space. Its
+% design departs from a single-phase chain (one state per link) in
+% one important respect: each road link $i \in \{1, \ldots, N\}$ is
+% represented by \emph{two} states, an \emph{up-phase} state
+% $i^{\uparrow}$ and a \emph{down-phase} state $i^{\downarrow}$, so
+% the chain has $2N$ states in total. The doubled state space lets
+% the chain track two distinct regimes that a vehicle on the network
+% can occupy, and lets each regime contribute its own characteristic
+% mass to the link-level prediction.
+
+% \subsection{What the two phases represent}
+% \label{sec:two-phases}
+
+% The two phases of the chain correspond to two qualitatively
+% different regimes of a vehicle's behavior on the road network:
+
+% \begin{itemize}
+%   \item The \emph{up phase} represents a vehicle that has just
+%         appeared in the network and is choosing where to go: it has
+%         not yet committed to traveling along a specific corridor.
+%         Steps within the up phase let mass redistribute along the
+%         graph before any actual travel begins.
+%   \item The \emph{down phase} represents a vehicle that is
+%         \emph{traveling} along the network, advancing from one link
+%         to the next according to road geometry. Steps within the
+%         down phase trace out the kind of multi-link path that a real
+%         trip would follow.
+% \end{itemize}
+
+% A single-phase Markov chain on the $N$ physical links cannot
+% distinguish these two regimes: it would force a single transition
+% rule to govern both ``where does mass come from'' and ``where does
+% mass travel to'', and any stationary distribution it produced would
+% fold the two contributions into one number per link. The two-phase
+% chain keeps them separate, so that the steady-state mass on each
+% physical link decomposes into a contribution from up-phase
+% deliberation and a contribution from down-phase travel, both
+% controlled by their own transition rule. The next subsections
+% specify those transition rules and the parameters that govern them.
+
+% \subsection{Transition rule}
+% \label{sec:transition}
+
+% The state space is $\{1, \ldots, N\} \times \{\uparrow, \downarrow\}$:
+% every road link $i$ is duplicated into an up-state $i^{\uparrow}$
+% and a down-state $i^{\downarrow}$. A mass vector on this space is
+% a probability over $2N$ entries (it sums to one), and the chain's
+% stationary distribution decomposes naturally into an up-phase
+% share $v^{\uparrow}(i)$ and a down-phase share $v^{\downarrow}(i)$
+% per link.
+
+% The chain is fully specified by the rule that takes a current state
+% to its next state. From an up-phase state $i^{\uparrow}$ the rule is
+% \begin{itemize}
+%   \item with probability $1 - \beta$, the chain stays in the up
+%         phase and moves to one of $i$'s graph neighbors
+%         $j^{\uparrow}$, with the choice governed by an up-phase
+%         transition matrix $P^{\uparrow} \in \mathbb{R}^{N \times N}$;
+%   \item with probability $\beta \in (0, 1)$, the chain commits to
+%         traveling along link $i$ and moves to the down-phase state
+%         $i^{\downarrow}$ on the same link.
+% \end{itemize}
+% From a down-phase state $i^{\downarrow}$ the rule is
+% \begin{itemize}
+%   \item with probability $1 - \rho$, the chain stays in the down
+%         phase and moves to a graph neighbor $j^{\downarrow}$,
+%         governed by a down-phase transition matrix
+%         $P^{\downarrow} \in \mathbb{R}^{N \times N}$;
+%   \item with probability $\rho \in (0, 1)$, the trip ends and the
+%         chain teleports back to a fresh up-phase state drawn from
+%         the prior $E_b$: it jumps to $j^{\uparrow}$ with probability
+%         $E_b(j)$.
+% \end{itemize}
+% We adopt the \emph{column-stochastic} convention throughout: column
+% $i$ of any of these matrices stores the probability distribution
+% over next states, given that the chain is currently in state $i$.
+% In particular, $P^{\uparrow}$ and $P^{\downarrow}$ are column-stochastic
+% matrices supported on the directed road graph: the entry
+% $P^{\uparrow}_{j, i}$ is the probability of moving to link $j$ from
+% link $i$ in the up phase, and is zero whenever there is no road
+% link from $i$ to $j$ (and similarly for $P^{\downarrow}$). Below,
+% $v$ denotes the chain's mass vector at iteration step $n$; like
+% $E_b$, it is a probability over the $2N$ states (so
+% $\sum_i v^{\uparrow}(i) + \sum_i v^{\downarrow}(i) = 1$). The
+% chain's prediction for link $i$ is the sum
+% $v^{\uparrow}(i) + v^{\downarrow}(i)$, itself a probability over
+% the $N$ links.
+
+% The explicit construction of $P^{\uparrow}, P^{\downarrow}$ is as
+% follows. Each link $\ell$ in the
+% network carries two physical attributes from the graph: a free
+% flow speed $s(\ell)$ and a lane count $\lambda(\ell)$. Let
+% $\bar s(\ell) = s(\ell)/\bar s$ and
+% $\bar \lambda(\ell) = \lambda(\ell)/\bar \lambda$ denote these
+% attributes normalized by their per-link mean over the network,
+% and define the per-link physics weight
+% \begin{equation}
+% \label{eq:phase-weight}
+% w^{\uparrow}(\ell)
+% \;=\; \bar s(\ell)^{\alpha_s}\,\bar \lambda(\ell)^{\alpha_l},
+% \qquad
+% w^{\downarrow}(\ell)
+% \;=\; \bar s(\ell)^{-\alpha_s}\,\bar \lambda(\ell)^{-\alpha_l},
+% \end{equation}
+% with two real exponents $\alpha_s, \alpha_l \in \mathbb{R}$ that
+% parametrize how strongly the chain favors fast or wide links in
+% each phase. Each kernel is then a $w$-weighted row-stochastic
+% walk on the directed road graph, made column-stochastic by
+% transpose:
+% \begin{equation}
+% \label{eq:phase-kernel}
+% P^{\uparrow}_{j, i}
+% \;=\;
+% \frac{w^{\uparrow}(j)\,\mathbf{1}\!\left[\, i \to j \,\right]}
+%      {\sum_{j' : i \to j'} w^{\uparrow}(j')},
+% \end{equation}
+% where $i \to j$ denotes ``there is a directed road link from $i$
+% to $j$''; $P^{\downarrow}_{j, i}$ is defined identically with
+% $w^{\downarrow}$ in place of $w^{\uparrow}$. The down-phase
+% weight is the up-phase weight with $(\alpha_s, \alpha_l)$
+% sign-flipped, so the two phases are mirrored: when the up phase
+% prefers slow or narrow links the down phase prefers fast or wide
+% links, and vice versa. The default chain used throughout the
+% evaluation has $\alpha_s = \alpha_l = 0$, which makes
+% $w^{\uparrow}, w^{\downarrow} \equiv 1$ and both kernels reduce
+% to the uniform-over-out-neighbors walk on the directed road
+% graph; the speed/lane exponents come back as tuning knobs in the
+% ladder of \cref{sec:ladder}.
+
+% Equivalently, ordering the $2N$ states as
+% $\big(1^{\uparrow}, \ldots, N^{\uparrow},\,
+%       1^{\downarrow}, \ldots, N^{\downarrow}\big)$,
+% the transition matrix of the chain is the column-stochastic
+% $2N \times 2N$ block matrix
+% \begin{equation}
+% \label{eq:M-block}
+% M_b \;=\;
+% \begin{pmatrix}
+% (1 - \beta)\, P^{\uparrow} & \rho\, E_b\, \mathbf{1}^{\top} \\[6pt]
+% \beta\, I                  & (1 - \rho)\, P^{\downarrow}
+% \end{pmatrix},
+% \end{equation}
+% where $I$ is the $N \times N$ identity, $\mathbf{1} \in
+% \mathbb{R}^{N}$ is the all-ones column vector, and $E_b \in
+% \mathbb{R}^{N}$ is the teleportation prior treated as a column
+% vector. The rank-1 block $\rho\, E_b\, \mathbf{1}^{\top}$ encodes
+% the ``every down-state gives mass back to the up phase via the same
+% prior $E_b$'' rule: each of its columns is the column vector
+% $\rho\, E_b$. With this convention the chain's mass distribution
+% $v \in \mathbb{R}^{2N}$ evolves as the simple matrix-vector product
+% \begin{equation}
+% \label{eq:iter}
+% v_{n+1} \;=\; M_b\, v_n,
+% \end{equation}
+% with no transpose required at any step of the iteration.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\paragraph{Calibrating $\beta$ and $\rho$.}
+\label{sec:beta-rho-calibration}
 
 The two scalars $\beta$ and $\rho$ control how long the chain
-stays in each phase before switching. A small $\beta$ lets the
-up-phase walk redistribute mass over many graph neighbors before
-committing to travel, while a small $\rho$ lets a single down-phase
-trip extend over many links before restarting. The values used in
-practice are not free parameters: they are method-of-moments
-estimates from the trip corpus,
+stays in each phase before switching.  However, the sum of two geometric distributions follows a negative binomial distribution which does not match the observations in Figure \ref{fig:single-phase-hist}; the negative binomial will have peak probability away from $0$.  
+We would rather like to interpret their ideal values as
 $\beta = \frac{1}{1 + \mathbb{E}[L_{\uparrow}]}$ and
 $\rho = \frac{1}{1 + \mathbb{E}[L_{\downarrow}]}$, where
 $L_{\uparrow}$ and $L_{\downarrow}$ are the empirical up- and
-down-phase clock lengths of the matched corpus. Their derivation
-from the raw matched routes is the subject of
-\cref{sec:beta-rho-calibration}.
+down-phase path lengths.  To do so, we need to model the lengths of the up and the down phase separately from the corpus.  
 
-\subsection{Calibrating $\beta$ and $\rho$ from the trip corpus}
-\label{sec:beta-rho-calibration}
+%The two scalars are not tuned against the evaluation metric; they are read off the empirical distribution of trip lengths in the matched-route corpus, in three steps.
 
-The two scalars are not tuned against the evaluation metric; they
-are read off the empirical distribution of trip lengths in the
-matched-route corpus, in three steps.
-
-\paragraph{Per-trip peak split.}
+%\paragraph{Per-trip peak split.}
 Every matched route is a sequence of road links
 $(\ell_1, \ell_2, \ldots, \ell_K)$ produced by the Viterbi pass of
 \cref{sec:mapmatching}. For each trip we identify a single \emph{peak link}
 $\ell_{p}$ as the link with the largest score $s(\ell) =
 \texttt{freespeed}(\ell) \times \texttt{numLanes}(\ell)$, with ties
 broken by the link closest to the trip's middle. The peak link
-plays the role of the trip's fastest, highest-capacity segment, the
+plays the role of the trip's fastest, highest-capacity segment: the
 freeway core of a typical commute. The two phases of the chain are
 then defined as the prefix and the suffix of the route relative to
 this peak,
@@ -1268,66 +1493,57 @@ L_{\uparrow} \;=\; \big|\{\,j \,:\, j < p\,\}\big|,
 \qquad
 L_{\downarrow} \;=\; \big|\{\,j \,:\, j > p\,\}\big|,
 \end{equation}
-so that $L_{\uparrow}$ counts the links traversed before the peak
-(exclusive), $L_{\downarrow}$ counts the links traversed after the
-peak (exclusive), and the peak link itself contributes the single
-intermediate transition $i^{\uparrow} \to i^{\downarrow}$ of
-\cref{sec:transition}; in particular,
-$L_{\uparrow} + 1 + L_{\downarrow} = K$. By construction
+so 
+% that $L_{\uparrow}$ counts the links traversed before the peak
+% (exclusive), $L_{\downarrow}$ counts the links traversed after the
+% peak (exclusive), and the peak link itself contributes the single
+% intermediate transition $i^{\uparrow} \to i^{\downarrow}$ of
+% \cref{sec:transition}; in particular,
+$L_{\uparrow} + 1 + L_{\downarrow} = K$. 
+By construction
 $L_{\uparrow}, L_{\downarrow} \in \{0, 1, 2, \ldots\}$: a route
 can begin or end on its own peak link, in which case the
-corresponding phase has length zero. Short trips ($K = 1, 2$) are
-handled by the convention $p = 0$ (the trip's first link is its own
-peak), which yields $L_{\uparrow} = 0$ and $L_{\downarrow} = K - 1$
-and contributes naturally to the empirical distributions. All
-$714{,}594$ matched routes are therefore included in the
+corresponding phase has length zero. 
+%Short trips ($K = 1, 2$) are
+%handled by the convention $p = 0$ (the trip's first link is its own
+%peak), which yields $L_{\uparrow} = 0$ and $L_{\downarrow} = K - 1$
+%and contributes naturally to the empirical distributions. 
+All $714{,}594$ matched routes are therefore included in the
 calibration sample.
 
-\paragraph{Empirical distribution and method-of-moments.}
 \Cref{fig:phase-histograms} shows the histograms of $L_{\uparrow}$
-and $L_{\downarrow}$ on this sample, with a geometric reference
+and $L_{\downarrow}$ on this sample, with the fit geometric reference
 curve overlaid in black on each panel. Both empirical
 distributions are heavy at zero and decay roughly exponentially,
-which is the signature of a geometric distribution on
-$\{0, 1, 2, \ldots\}$ with success probability $p$ and mean
-$\frac{1 - p}{p}$. The black curves overlay $\textsf{Geom}(p)$
-with $p$ matched to the empirical mean through
-\begin{equation}
-\label{eq:mom}
-\mathbb{E}[L] \;=\; \frac{1 - p}{p}
-\;\Longleftrightarrow\;
-p \;=\; \frac{1}{1 + \mathbb{E}[L]},
-\end{equation}
-which is the method-of-moments estimator for a geometric on
-$\{0, 1, \ldots\}$. Read each histogram bin as ``in this many
-trips the prefix (resp.\ suffix) was exactly $L$ links long.''
-Setting $\beta = 1 / (1 + \mathbb{E}[L_\uparrow])$ means the
-chain's average up-phase clock length matches the empirical mean,
-and likewise for $\rho$; the values $\beta, \rho \approx 0.10$
-correspond to chains that stay in each phase about ten steps on
-average. Reading the empirical means off the histograms,
-\begin{equation}
-\label{eq:phase-means}
-\mathbb{E}[L_{\uparrow}] \;=\; 8.81,
-\qquad
-\mathbb{E}[L_{\downarrow}] \;=\; 8.87,
-\end{equation}
-and applying \eqref{eq:mom} to each phase yields
-\begin{equation}
-\label{eq:beta-rho}
-\beta \;=\; \frac{1}{1 + \mathbb{E}[L_{\uparrow}]} \;=\; 0.102,
-\qquad
-\rho \;=\; \frac{1}{1 + \mathbb{E}[L_{\downarrow}]} \;=\; 0.101.
-\end{equation}
-These are the values fed into the chain in
-\cref{sec:transition,sec:evaluation}; they are not chosen to fit
-the evaluation, only to match the average up- and down-phase clock
-lengths of the matched corpus. Both panels of
-\cref{fig:phase-histograms} are well described by their geometric
-reference in the body across the full range, with the empirical
-bars sitting close to the geometric line throughout (a small
-under-dispersion at large $L$ shows up as the bars being slightly
-below the reference for $L_{\uparrow}, L_{\downarrow} \gtrsim 30$).
+which is the signature of a geometric distribution.  
+%on $\{0, 1, 2, \ldots\}$ with success probability $p$ and mean $\frac{1 - p}{p}$. 
+The black curves overlay $\textsf{Geom}(p)$
+with $p = \frac{1}{1+\mathbb{E}[L]}$ using the empirical mean $\mathbb{E}[L]$.  
+% through
+% \begin{equation}
+% \label{eq:mom}
+% \mathbb{E}[L] \;=\; \frac{1 - p}{p}
+% \;\Longleftrightarrow\;
+% p \;=\; \frac{1}{1 + \mathbb{E}[L]},
+% \end{equation}
+% which is the method-of-moments estimator for a geometric on
+% $\{0, 1, \ldots\}$. Read each histogram bin as ``in this many
+% trips the prefix (resp.\ suffix) was exactly $L$ links long.''
+% Setting $\beta = 1 / (1 + \mathbb{E}[L_\uparrow])$ means the
+% chain's average up-phase clock length matches the empirical mean,
+% and likewise for $\rho$; 
+The empirical means are $\mathbb{E}[L_{\uparrow}] \;=\; 8.81$ and 
+$\mathbb{E}[L_{\downarrow}] \;=\; 8.87$ for the up and down phases, respectively lead to
+$\beta \;=\; \frac{1}{1 + \mathbb{E}[L_{\uparrow}]} \;=\; 0.102$ and 
+$\rho \;=\; \frac{1}{1 + \mathbb{E}[L_{\downarrow}]} \;=\; 0.101$.  
+These estimated values $\beta, \rho \approx 0.10$, correspond to chains that stay in each phase about $10$ steps on
+average. 
+% Both panels of
+% \cref{fig:phase-histograms} are well described by their geometric
+% reference in the body across the full range, with the empirical
+% bars sitting close to the geometric line throughout (a small
+% under-dispersion at large $L$ shows up as the bars being slightly
+% below the reference for $L_{\uparrow}, L_{\downarrow} \gtrsim 30$).
 
 \begin{figure}[H]
 \centering
@@ -1342,102 +1558,585 @@ corpus, with the matched geometric overlay in black.}
 \label{fig:phase-histograms}
 \end{figure}
 
-\paragraph{Why the geometric is the right reference.}
-In the chain of \cref{sec:transition}, the number of up-phase
-steps before the chain commits to travel is, by construction, a
-geometric random variable with success probability $\beta$ on the
-support $\{0, 1, 2, \ldots\}$, and the number of down-phase steps
-before the chain restarts is geometric with probability $\rho$ on
-the same support. Calibrating $\beta$ and $\rho$ by the
-method-of-moments \eqref{eq:mom} therefore guarantees that the
-chain matches the empirical mean phase length exactly. The
-geometric assumption is approximate (the empirical tails are
-slightly heavier than geometric, as visible in
-\cref{fig:phase-histograms}), but the two means are by
-construction correct, which is the moment that the chain
-consumes.
+% \paragraph{Why the geometric is the right reference.}
+% In the chain of \cref{sec:transition}, the number of up-phase
+% steps before the chain commits to travel is, by construction, a
+% geometric random variable with success probability $\beta$ on the
+% support $\{0, 1, 2, \ldots\}$, and the number of down-phase steps
+% before the chain restarts is geometric with probability $\rho$ on
+% the same support. Calibrating $\beta$ and $\rho$ by the
+% method-of-moments \eqref{eq:mom} therefore guarantees that the
+% chain matches the empirical mean phase length exactly. The
+% geometric assumption is approximate (the empirical tails are
+% slightly heavier than geometric, as visible in
+% \cref{fig:phase-histograms}), but the two means are by
+% construction correct, which is the moment that the chain
+% consumes.
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \paragraph{Quantifying the fit.}
 We pair the visual fit of \cref{fig:phase-histograms} with the
 Kolmogorov-Smirnov statistic
 $D = \sup_{k} \left| F_{\textsf{emp}}(k) - F_{\textsf{geom}}(k; p) \right|$,
-where
-\[
-  F_{\textsf{emp}}(k)
-  = \frac{1}{n} \sum_{i=1}^{n} \mathbf{1}\!\left[\, X_i \leq k \,\right]
-\]
-is the empirical CDF over the $n$ observed phase lengths
-$\{X_i\}_{i=1}^{n}$,
-\[
-  F_{\textsf{geom}}(k; p) = 1 - (1 - p)^{k+1}, \qquad k \in \{0, 1, 2, \ldots\},
-\]
-is the CDF of the fitted geometric, and
-\[
-  p = \frac{1}{1 + \mathbb{E}[L]}
-\]
-is its maximum-likelihood estimator. Smaller $D$ means a tighter empirical
-match. \Cref{tab:geom-fit} reports $D$ in three configurations.
-Column $D_{\textsf{single}}$ fits one geometric to the full
-route length $K = L_{\uparrow} + 1 + L_{\downarrow}$; columns
+where $F_{\textsf{emp}}(k)$
+% \[
+%   F_{\textsf{emp}}(k)
+%   = \frac{1}{n} \sum_{i=1}^{n} \mathbf{1}\!\left[\, X_i \leq k \,\right]
+% \]
+%is the empirical CDF over the $n$ observed phase lengths
+%$\{X_i\}_{i=1}^{n}$,
+and $F_{\textsf{geom}}(k; p) = 1 - (1 - p)^{k+1}$ 
+%\[
+%  F_{\textsf{geom}}(k; p) = 1 - (1 - p)^{k+1}, \qquad k \in \{0, 1, 2, \ldots\},
+%\]
+is the CDF of the fitted geometric.  
+%, and
+%\[
+%  p = \frac{1}{1 + \mathbb{E}[L]}
+%\]
+%is its maximum-likelihood estimator. 
+Smaller $D$ means a tighter empirical match. \Cref{tab:geom-fit} reports $D$ in three configurations.
+Column $D_{\textsf{single}}$ fits one geometric to the full route length $K = L_{\uparrow} + 1 + L_{\downarrow}$; columns
 $D_{\uparrow}$ and $D_{\downarrow}$ fit geometrics to
 $L_{\uparrow}$ and $L_{\downarrow}$ separately. The first row
 matches on the low-resolution map and aggregates to
 low-resolution links; the second matches on the
 high-resolution map and aggregates to the same links; the
 third both matches and aggregates at high-resolution.
+The two-phase model with the high-res matcher on the low-res links (that we use) has the smallest score, and is the best fit.  
 
 \begin{table}[H]
 \centering
-\caption{Kolmogorov-Smirnov distance $D$ between empirical
-phase lengths and the fitted geometric. Lower is better;
-read each row as ``fitting a $\textsf{Geom}(p)$ to the
-$L_\uparrow$ (resp.\ $L_\downarrow$) histogram leaves a $D$ of
-this size under K-S.''}
+\caption{Kolmogorov-Smirnov distance $D$ between the single or two-phase
+histograms and the fitted geometric model.}  % (lower is better).}
+%$D_{\textsf{single}}$ scores the single-geometric fit on $K_{\textsf{total}}$; $D_{\uparrow}$ and $D_{\downarrow}$ score the split fit on $L_{\uparrow}$ and $L_{\downarrow}$.}
 \label{tab:geom-fit}
-{\scriptsize
+{
 \setlength{\tabcolsep}{4pt}
 \renewcommand{\arraystretch}{1.20}
-\begin{tabular}{@{}llrccc@{}}
+\begin{tabular}{@{}llccc@{}}
 \toprule
-Matcher & Granularity & $n$
+Matcher & Granularity 
   & $D_{\textsf{single}}$
   & $D_{\uparrow}$
   & $D_{\downarrow}$ \\
 \midrule
-low-res  & low-res links      & $293{,}066$ & $0.188$ & $0.129$ & $0.103$ \\
-high-res & low-res links      & $621{,}986$ & $0.129$ & $\mathbf{0.030}$ & $\mathbf{0.032}$ \\
-high-res & high-res sub-edges & $306{,}659$ & $0.102$ & $0.138$ & $0.148$ \\
+low-res  & low-res links      & $0.188$ & $0.129$ & $0.103$ \\
+\rowcolor{gray!15} 
+high-res & low-res links       & $0.129$ & $\mathbf{0.030}$ & $\mathbf{0.032}$ \\
+high-res & high-res sub-edges &  $0.102$ & $0.138$ & $0.148$ \\
 \bottomrule
 \end{tabular}
 }
 \end{table}
 
-Two findings follow. On the low-resolution aggregation that
-the chain runs on, splitting the route at the
-$\textsf{freespeed} \times \textsf{permlanes}$ peak reduces $D$
-by $76\%$ relative to the single-geometric fit, and the
-matching change from the low-resolution to the high-resolution
-map tightens $D_{\uparrow}$ and $D_{\downarrow}$ by a further
-$76\%$ and $69\%$ on the same granularity. The empirical
-variance moves the same way: the overdispersion ratio
-$\frac{\operatorname{Var}(L_{\uparrow})}{\mathbb{E}[L_{\uparrow}](1 + \mathbb{E}[L_{\uparrow}])}$
-moves from $2.07$ on the low-resolution map to $0.93$ on the
-high-resolution map, sitting just below unity (slight
-under-dispersion) and well inside the geometric model's natural
-variance range.
+% On the low-resolution aggregation that the chain runs on, the
+% up/down split cuts $D$ by $76\%$ relative to the single-geometric
+% fit, and switching the matcher to high-resolution tightens
+% $D_{\uparrow}$ and $D_{\downarrow}$ by a further $76\%$ and $69\%$.
+% The overdispersion ratio
+% $\displaystyle
+% \frac{\operatorname{Var}(L_{\uparrow})}
+%      {\mathbb{E}[L_{\uparrow}]\bigl(1 + \mathbb{E}[L_{\uparrow}]\bigr)}$
+% drops from $2.07$ to $0.93$, well inside the geometric model's
+% natural variance range. At high-resolution sub-edge granularity
+% neither fit is clean: the empirical variance is overdispersed by
+% $1.8$ to $2.0$ and the split does not separate the histograms.
+% We therefore calibrate at low-resolution
+% ($\beta = 0.102$, $\rho = 0.101$) and treat the sub-edge view as
+% descriptive only.
 
-At high-resolution sub-edge granularity, neither single nor
-split geometric is a good fit; the empirical variance is
-overdispersed by a factor of $1.8$ to $2.0$ and the up versus
-down split, computed at low-resolution before being projected
-to sub-edges, does not separate the empirical distribution
-cleanly. We therefore keep the geometric calibration at
-low-resolution ($\beta = 0.102$, $\rho = 0.101$) and treat the
-high-resolution view of the same data as a descriptive
-aggregation only.
 
-\section{Experiments}
-\label{sec:experiments}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\paragraph{Fitting Two-Phase PageRank Model}
+Finally, to complete the two-phase PageRank model, we need to fit the parameters $\alpha^\uparrow$ and $\alpha^\downarrow$ for the full model to be complete.  %However, we expect the dependence on the angular similarity $\alpha_a$ to not depend on the phase of the model, so we set $\alpha_a^\uparrow = \alpha_a^\downarrow$.  
+%Moreover, we simplify so the model is invertible, and the proclivity to favor links with larger throughput parameters going up should be the opposite of that of going down to destination.  So we also set $\alpha_s^\uparrow = - \alpha_s^\downarrow$ and $\alpha_l^\uparrow = - \alpha_l^\downarrow$.  As a result we are back to only three paramaters $\alpha = \alpha^\uparrow = (\alpha_s^\uparrow, \alpha_l^\uparrow, \alpha_a^\uparrow)$ to learn.  
+As in the single phase model, we set up a loss function 
+\[
+\mathcal{L}(\alpha) = \sum_{b \in [T]} \sum_{i \in [N]} \frac{| \hat v_\star(\tilde E_b, \alpha)[i] - \tilde F_b[i]| }{\tilde F_b[i] + \varepsilon}
+\]
+where $\hat v_\star(\tilde E_b, \alpha) \in \R^N$ now the folded, converged-to two-phase PageRank vector for a Markov chain following \eqref{eq:2P-iter}, where $P^\uparrow$ and $P^\downarrow$ are defined with the specified $\alpha^\uparrow$ and $\alpha^\downarrow$ parameters where now $\alpha = (\alpha^\uparrow,\alpha^\downarrow) = (\alpha_s^\uparrow,\alpha_l^\uparrow,\alpha_s^\downarrow,\alpha_l^\downarrow) \in \R^4$.  
+Given the diffused starting positions $\tilde E_b$, the goal is still to match the diffused observed traffic population $\tilde F_b$.  As before we choose these parameters $\alpha* = \arg \min_{\alpha \in \R^4} \mathcal{L}(\alpha)$.  We do this with gradient descent via \texttt{autograd}.  
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Global Forecasting Evaluation}
+\label{sec:global-forecast}
+
+We now evaluate our model on how well it predicts the global traffic distribution over the course of a week.  
+We use MRE as described in Section \ref{sec:evaluation-framework}.    More specifically, we will aim to evaluate the model using the last 7 days of data.  We report the Ov.MRE in three ways:  
+the \emph{train} setting evaluates on the first 23 days that are used to train $\alpha$;
+the \emph{test} setting evaluates on the last 7 days, held out from the training of $\alpha$, but this still uses the diffused starting point distribution $\tilde E_b$ to define teleportation for the same time period $b$; and 
+the \emph{forecast} also evaluates on the last 7 days, but uses the diffused starting point distribution $\tilde E_{b-7d}$ from precisely 7 days prior; but against the diffused traffic population $\tilde F_b$ in the last 7 days.  
+The first case train does not maintain a test/train split, and is shown for completeness.   The test evaluation does maintain a test train split to evaluate the choices of $\alpha$, but information may leak from the diffused starting points $\tilde E_b$ (which are different from the diffused traffic population $\tilde F_b$). Finally, the forecast version keeps all data from training part separate from the evaluation.  
+
+% We compute the average MRE value of the model $\hat v_\star(\tilde E_{b-7d}, \alpha)$ against the diffused data $\tilde F_b$.  Note that the index of $\tilde E_{b-7d}$ indicates it is the diffused observation of starting routes from precisely 7 days earlier in time then the ones evaluated $\tilde F_b$.  However, the parameters $\alpha$ are learned using, averaged over the first 23 days of observations.  This maintains a train-test split.  
+To be clear, in the forecast setting, 
+we compute the average relative error for each link $i \in [N]$ for every $b$ in the last week as 
+        \[
+          \mathrm{MRE}_b
+          \;=\;
+          \frac{1}{N} \sum_{i=1}^{N}
+          \frac{\bigl|\tilde F_{b,i} - v_\star(\tilde E_{b-7d},\alpha)\bigr|}
+               {\tilde F_{b,i} + \varepsilon}.
+        \]
+The Overall MRE (Ov.MRE) is reported by considering $5$ minute time bins $b \in [T_{-7d}]$ for $T_{-7d} = [2018$-$09$-$23\ 19{:}00,\ 2018$-$09$-$30\ 18{:}55]$ which are in the last week over observations, held out for evaluation.  That is we compute and report
+\[
+\mathrm{Ov.MRE}
+ = 
+ \frac{1}{T_{-7d}} \sum_{b \in [T_{-7d}]} \mathrm{MRE}_b.
+\]
+
+
+
+
+
+
+% For every $5$-minute slot $b$ we feed a diffused trip-origin field
+% $E_b$ as the chain's prior and compare the chain's steady state to
+% the diffused popularity $F_b$ observed in the same slot. The chain
+% dynamics are frozen at the geometric-fit values (single-phase
+% $\alpha = 0.0508$; two-phase $\beta = 0.102$, $\rho = 0.101$) and
+% only the per-edge exponents $\alpha_s$, $\alpha_l$,
+% $\alpha_{\text{ang}}$ on speed, lanes, and turn-angle are learned.
+% Each row of \cref{tab:origin-forecast} activates a different subset
+% of these exponents; all rows are trained on the $6{,}624$ slots of
+% the first $23$ days of the corpus and evaluated on the $2{,}016$
+% slots of the last $7$ days.
+
+% \paragraph{Pipeline.}
+% \begin{enumerate}[leftmargin=2.0em]
+%   \item \textbf{Trip-origin matrix.}
+%         For each map-matched route $r$ we take its first fix
+%         $(\mathsf{lid}_{\text{first}},\, t_{\text{first}})$,
+%         bin it by $b(t) = \left\lfloor \dfrac{t - t_0}{\Delta} \right\rfloor$ with
+%         $t_0 = $~2018-01-01 and $\Delta = 300$~s, and increment
+%         $E_{b(t_{\text{first}}),\,\mathsf{lid}_{\text{first}}}$ by one.
+%         This yields a sparse $T \times N$ matrix $E$ of distinct trip
+%         starts per $(\text{bin}, \text{link})$ cell, parallel to the
+%         popularity matrix $C$ of \cref{sec:counting}.
+%   \item \textbf{Diffusion.}
+%         We apply the same per-slot smoothing as for the popularity
+%         prior in \cref{sec:diffusion}, so each $E_b$ is a probability
+%         vector that sums to one and is non-zero on every link.
+%   \item \textbf{Edge weights.}
+%         Each directed adjacency edge $(i \to j)$ receives the weight
+%         \[
+%           w(i, j) \;=\;
+%           \mathsf{speed}_j^{\alpha_s}
+%           \cdot \mathsf{lanes}_j^{\alpha_l}
+%           \cdot \bigl(1 + \cos \theta_{ij} + \delta\bigr)^{\alpha_{\text{ang}}},
+%         \]
+%         with $\cos \theta_{ij}$ the dot product of the unit direction
+%         vectors of links $i$ and $j$, and $\delta = 0.05$ a
+%         floor that keeps the $\alpha_{\text{ang}} < 0$ branch finite
+%         at U-turn edges. Per source $i$ the weights are normalized
+%         over its successors to yield the column-stochastic transition
+%         $P(\alpha_s, \alpha_l, \alpha_{\text{ang}})$.
+%   \item \textbf{Chain prediction.}
+%         Iterating the chain to steady state with prior $E_b$ gives
+%         the predicted popularity field
+%         $v_b = \chi\bigl(P,\, E_b\bigr)$, where $\chi$ is the
+%         single-phase or two-phase iteration.
+%   \item \textbf{Per-slot loss.}
+%         \[
+%           \mathrm{MRE}_b
+%           \;=\;
+%           \frac{1}{N} \sum_{i=1}^{N}
+%           \frac{\bigl|F_{b,i} - v_{b,i}\bigr|}
+%                {F_{b,i} + 10^{-6}}.
+%         \]
+%   \item \textbf{Training.}
+%         The training set is the $6{,}624$ slots in the first $23$
+%         days of the corpus,
+%         $[2018$-$08$-$31\ 19{:}00,\ 2018$-$09$-$23\ 18{:}55]$. The
+%         loss is the mean of $\mathrm{MRE}_b$ across these slots.
+%         L-BFGS-B with $5$ parallel starts is run on each ladder row,
+%         tuning only the exponents that the row activates; we keep
+%         the start with the lowest training loss.
+%   \item \textbf{Held-out test.}
+%         With the trained exponents frozen, the same chain is applied
+%         to the $2{,}016$ slots in the last $7$ days,
+%         $[2018$-$09$-$23\ 19{:}00,\ 2018$-$09$-$30\ 18{:}55]$. We
+%         report the mean and median of $\mathrm{MRE}_b$ across the
+%         test slots alongside the training values.
+% \end{enumerate}
+
+% We first record the two vanilla baselines that fall out of the same
+% pipeline with no exponents activated.  With $\alpha_s = \alpha_l =
+% \alpha_{\text{ang}} = 0$ the transition $P$ reduces to the uniform
+% walk over each source's out-neighbors, so the chain has no learnable
+% parameters and a single forward pass settles the question for every
+% slot.  We sweep the chain over all $8{,}640$ slots of the corpus
+% under two priors: the uniform prior
+% $\mathbf{u} = \bigl(\tfrac{1}{N}, \ldots, \tfrac{1}{N}\bigr)$ that ignores demand altogether, and
+% the diffused trip-origin prior $E_b$ of step~2 above.  Table
+% \ref{tab:origin-forecast-vanilla} reports the mean and median Overall
+% MRE across the $8{,}640$ slots; the median is included alongside the
+% mean to flag whether a few peak-hour slots dominate.
+
+% \begin{table}[H]
+% \centering
+% \caption{Vanilla forecast: $\alpha_s = \alpha_l = \alpha_{\text{ang}} = 0$,
+% evaluated on all $8{,}640$ slots of the corpus.}
+% \label{tab:origin-forecast-vanilla}
+% \scriptsize
+% \setlength{\tabcolsep}{4pt}
+% \begin{tabular}{|l|r|r|}
+% \hline
+% prior
+%   & \makecell{Ov.MRE\\mean} & \makecell{Ov.MRE\\median} \\
+% \hline
+% \multicolumn{3}{|l|}{\textit{Single-phase, $\alpha = 0.0508$}} \\
+% \hline
+% \texttt{uniform}  & $1.1965$ & $0.9698$ \\
+% \hline
+% \texttt{origin}   & $1.1479$ & $0.9449$ \\
+% \hline
+% \multicolumn{3}{|l|}{\textit{Two-phase, $\beta = 0.102$, $\rho = 0.101$}} \\
+% \hline
+% \texttt{uniform}  & $1.1957$ & $0.9693$ \\
+% \hline
+% \texttt{origin}   & $1.1422$ & $0.9423$ \\
+% \hline
+% \end{tabular}
+% \end{table}
+
+
+Table \ref{tab:forecast-norm} shows the Overall MRE under various settings and baselines.  
+The top half shows the Single Phase PageRank model, and the bottom half shows the Two Phase PageRank Model.  
+The \texttt{uniform} row uses the uninformed teleportation process, where it starts a route at a uniform random link, each with probability $1/N$; it has no other tuning.  
+The \texttt{origin dist} row replaces this with the diffused route origin prior from 7 days prior $\tilde E_{b-7b}$ (or $\tilde E_b$ for the train and test variations).  This allows the model to adapt to the specific 5 minute time window $b$ with the week.  The remaining rows also use this prior $\tilde E_{b-7b}$ (or $\tilde E_b$), and also uses the training set $T_{23d}$ to tune the various $\alpha$ parameters.  
+While the last row \textt{speed + lane} runs both $\alpha$ parameters, the other rows only tune a subset of them, with the others set to $\alpha_? = 0$ so that modeling has no effect on $P$.  
+
+Note that even the \texttt{uniform} (which uses no information from the data other than the graph structure) has higher Overall MRE on test than train.  So while it is not surprising for test scores to be higher than training scores (due to perhaps slight overfitting on the training set) this difference reflects that the inherent harder nature of the last 7 days, in the evaluate split we chose.  
+
+Otherwise, we observe that from the uniform baseline, as we add enhancements (origin distribution $\tilde E_b$, training $\alpha$, two-phase), the Ov.MRE error decreases.  For each measurement variant, the (\colorbox{gray!15}{highlighted}) row which includes all of these enhancements has the lowest error.  As predicted the $\alpha^\uparrow$ values optimize to be positive for the up phase, and the $\alpha^\downarrow$ values optimize to negative for the down phase.  
+
+
+We remark that the decrease in the error may not seem significant; with relative error about $1$ after optimization.  We posit that this is sort of error range is expected and it would be surprising to improve upon this.  Recall how we set the global noise floor at $\NFG = 2.65 \times 10^{-4}$; since most entries of $\tilde F_b$; this would give a median $MRE_b$ of 1.0 \jeff{can we quantify this better by computing the average $\|\tilde F_b - \tilde F_{b - 7d}|/(\tilde F_b + \varepsilon)$?  }
+Also note that the standard deviation is relatively large (about $0.8$) and also decreases as we progress to more enhanced models.  
+Overall, this shows that our methods provide real improvement in its week-to-week modeling ability, which generating memoryless routes on the full metro-scale network.  
+
+
+
+
+\begin{table*}[t]
+\centering
+\caption{Overall MRE and standard deviation for PageRank models, evaluated on train data  (first 23 days $T_{23d}$), test data (last 7 days $T_{-7d}$), and forecast where starting point distribution $\tilde E_{b-7d}$ is from 7 days prior.}
+\label{tab:forecast-norm}
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{llrrrrrrrrrr}
+\toprule
+& mode & $\alpha_s$ or $\alpha_s^{\uparrow}$ & $\alpha_s^{\downarrow}$ & $\alpha_l$ or $\alpha_l^{\uparrow}$ & $\alpha_l^{\downarrow}$
+  & train & (st.dev)
+  & test  & (st.dev)
+  & forecast & (st.dev) \\
+\cmidrule(lr){7-8}\cmidrule(lr){9-10}\cmidrule(lr){11-12}
+  Phases & &          &&&          & \multicolumn{2}{c}{$(\tilde{E}_{b},\tilde{F}_{b})$; $T_{23d}$} & \multicolumn{2}{c}{$(\tilde{E}_{b},\tilde{F}_{b})$; $T_{-7d}$} & \multicolumn{2}{c}{$(\tilde{E}_{b-7d},\tilde{F}_{b})$; $T_{-7d}$} \\
+\midrule
+1 & \texttt{uniform:} $E = 1/N$  &   ---    &  ---    &  ---    &   ---    & $1.1739$ & $(0.8309)$ & $1.2706$ & $(0.8625)$ & $1.2706$ & $(0.8625)$ \\
+1 & \texttt{origin dist}    &   ---    &   ---    &  ---    &  ---    & $1.1266$ & $(0.7818)$ & $1.2178$ & $(0.8117)$ & $1.2401$ & $(0.8310)$ \\
+1 & \texttt{speed}       & $+2.242$ &   ---    &  ---    &  ---    & $1.1096$ & $(0.7466)$ & $1.1963$ & $(0.7759)$ & $1.2197$ & $(0.7960)$ \\
+1 & \texttt{lane}       &   ---    &  ---    &  $+0.673$    & --- & $1.1136$ & $(0.7586)$ & $1.2018$ & $(0.7884)$ & $1.2252$ & $(0.8086)$ \\
+1 & \texttt{speed + lane} & $+1.751$ & --- & $+0.436$    &  ---    &  $1.1045$ & $(0.7383)$ & $1.1903$ & $(0.7675)$ & $1.2141$ & $(0.7879)$ \\
+\midrule
+2 & \texttt{uniform:} $E = 1/N$  &   ---    &   ---    &   ---    &   ---    & $1.1732$ & $(0.8309)$ & $1.2698$ & $(0.8625)$ & $1.2698$ & $(0.8625)$ \\
+2 & \texttt{origin dist}    &   ---    &   ---    &   ---    &   ---    & $1.1211$ & $(0.7768)$ & $1.2117$ & $(0.8065)$ & $1.2365$ & $(0.8279)$ \\
+2 & \texttt{speed}       & $+6.960$ & $-1.518$ &   ---    &   ---    & $1.0990$ & $(0.7446)$ & $1.1852$ & $(0.7739)$ & $1.2117$ & $(0.7966)$ \\
+2 & \texttt{lane}       &   ---    &   ---    & $+2.320$ & $-0.658$ & $1.1034$ & $(0.7490)$ & $1.1902$ & $(0.7786)$ & $1.2176$ & $(0.8020)$ \\
+\rowcolor{gray!15}2 & \texttt{speed + lane} & $+4.649$ & $-0.572$ & $+1.161$ & $-0.167$ & $1.0948$ & $(0.7375)$ & $1.1801$ & $(0.7667)$ & $1.2072$ & $(0.7899)$ \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+
+
+
+
+% \begin{table*}[t]
+% \centering
+% \caption{Single-phase origin-informed forecast ($\alpha = 0.0508$), trained on the
+% first 23 days, evaluated on the last 7. The \texttt{fcast} columns are the
+% 7-day-ahead forecast (each test slot fed the origins from 7 days
+% earlier).}
+% \label{tab:sp-forecast-norm}
+% \setlength{\tabcolsep}{5pt}
+% \begin{tabular}{lrrrrrrrr}
+% \toprule
+% mode & $\alpha_s$ & $\alpha_l$
+%   & \makecell{train\\mean} & \makecell{train\\dev}
+%   & \makecell{test\\mean}  & \makecell{test\\dev}
+%   & \makecell{fcast\\mean} & \makecell{fcast\\dev} \\
+% \cmidrule(lr){4-5}\cmidrule(lr){6-7}\cmidrule(lr){8-9}
+%   &          &          & \multicolumn{2}{c}{$(\tilde{E}_{b},\tilde{F}_{b})$} & \multicolumn{2}{c}{$(\tilde{E}_{b},\tilde{F}_{b})$} & \multicolumn{2}{c}{$(\tilde{E}_{b-7d},\tilde{F}_{b})$} \\
+% \midrule
+% \texttt{uniform:} $E = 1/N$  &   ---    &   ---    & $1.1739$ & $0.8309$ & $1.2706$ & $0.8625$ & $1.2706$ & $0.8625$ \\
+% \texttt{origin}    &   ---    &   ---    & $1.1266$ & $0.7818$ & $1.2178$ & $0.8117$ & $1.2401$ & $0.8310$ \\
+% \texttt{speed}       & $+2.242$ &   ---    & $1.1096$ & $0.7466$ & $1.1963$ & $0.7759$ & $1.2197$ & $0.7960$ \\
+% \texttt{lane}       &   ---    & $+0.673$ & $1.1136$ & $0.7586$ & $1.2018$ & $0.7884$ & $1.2252$ & $0.8086$ \\
+% \rowcolor{gray!15}\texttt{speed + lane} & $+1.751$ & $+0.436$ & $1.1045$ & $0.7383$ & $1.1903$ & $0.7675$ & $1.2141$ & $0.7879$ \\
+% \bottomrule
+% \end{tabular}
+% \end{table*}
+
+% \begin{table*}[t]
+% \centering
+% \caption{Two-phase up/down origin-informed forecast ($\beta=0.102$, $\rho=0.101$), trained on
+% the first 23 days, evaluated on the last 7. The \texttt{fcast} columns are
+% the 7-day-ahead forecast (each test slot fed the origins from 7 days
+% earlier).}
+% \label{tab:tp-forecast-updown}
+% \setlength{\tabcolsep}{3.5pt}
+% \begin{tabular}{lrrrrrrrrrr}
+% \toprule
+% mode & $\alpha_s^{\uparrow}$ & $\alpha_s^{\downarrow}$ & $\alpha_l^{\uparrow}$ & $\alpha_l^{\downarrow}$
+%   & \makecell{train\\mean} & \makecell{train\\dev}
+%   & \makecell{test\\mean}  & \makecell{test\\dev}
+%   & \makecell{fcast\\mean} & \makecell{fcast\\dev} \\
+% \cmidrule(lr){6-7}\cmidrule(lr){8-9}\cmidrule(lr){10-11}
+%   &          &          &          &          & \multicolumn{2}{c}{$(\tilde{E}_{b},\tilde{F}_{b})$} & \multicolumn{2}{c}{$(\tilde{E}_{b},\tilde{F}_{b})$} & \multicolumn{2}{c}{$(\tilde{E}_{b-7d},\tilde{F}_{b})$} \\
+% \midrule
+% \texttt{uniform:} $E = 1/N$  &   ---    &   ---    &   ---    &   ---    & $1.1732$ & $0.8309$ & $1.2698$ & $0.8625$ & $1.2698$ & $0.8625$ \\
+% \texttt{origin}    &   ---    &   ---    &   ---    &   ---    & $1.1211$ & $0.7768$ & $1.2117$ & $0.8065$ & $1.2365$ & $0.8279$ \\
+% \texttt{speed}       & $+6.960$ & $-1.518$ &   ---    &   ---    & $1.0990$ & $0.7446$ & $1.1852$ & $0.7739$ & $1.2117$ & $0.7966$ \\
+% \texttt{lane}       &   ---    &   ---    & $+2.320$ & $-0.658$ & $1.1034$ & $0.7490$ & $1.1902$ & $0.7786$ & $1.2176$ & $0.8020$ \\
+% \rowcolor{gray!15}\texttt{speed + lane} & $+4.649$ & $-0.572$ & $+1.161$ & $-0.167$ & $1.0948$ & $0.7375$ & $1.1801$ & $0.7667$ & $1.2072$ & $0.7899$ \\
+% \bottomrule
+% \end{tabular}
+% \end{table*}
+
+
+
+
+
+
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Event Modeling}
+\label{sec:event-modeling}
+
+We show how to apply this framework to model specific events that have predictable configuration changes, which allows for updated modeling.  
+
+There are two direct ways we can leverage our model to provide what-if planning for different sorts of scenarios. 
+First, if there are road closures (either planned or unplanned), then we can perform a simple modification of the graph by removing those links.  
+Second, if there is a large event attracting many of additional people to a small area, then we can adapt the route origin distribution $\tilde E_b$ for the specified time windows $b$ for the event.  In practice for sporting events or festivals we can use prior events for these modified distribution estimates, but because we only have access to one month of data, we use the data from the $\tilde E_b$ data actual event.  To build a forecast, we train how to increase $\tilde E_b$ on half of the links, and measure generalization on the other half.  
+In both cases, we do not need to retrain the $\alpha$ parameters, only to rerun the PageRank iteration \eqref{eq:2P-iter}; which is fast because we maintain a sparse format, and the distribution vector $v_\star$ is converged to quickly.  
+
+Moreover, on a metro scale network, even large events have relatively local effect.  As a result, we change the model prediction and evaluate their effect on local region around the events (in addition to the global evaluation -- which barely changes).  
+
+We study three cases where we can highlight both intervention types, and both at once.  
+
+\subsection{Case study 1: Car crash}\label{sec:crash}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{figures/i15_crash_event_links_GPT.pdf}
+    \caption{I-15 northbound crash near Draper, 2018-09-20: the closed
+    link in red, the evaluation box dashed, and the same area on the
+    basemap.}
+    \label{fig:crash-event}
+\end{figure}
+
+We repeat the analysis around the I-15 northbound crash near Draper on
+Thursday, September 20, 2018, which closed a freeway segment during the
+morning. We run the chains over the 60 five-minute slots from 07:00 to
+11:55 and report the Overall MRE on an evaluation box around the closure
+(975 open links) and on the whole network. The prior is the previous
+week's diffused origins $\tilde{E}_{b-7d}$ (the same hours on Thursday,
+September 13) and the target is the crash-day popularity; both chains use
+speed and lane exponents (single phase $\alpha = 0.0508$; two-phase
+up/down $\beta = 0.102$, $\rho = 0.101$). The closed set is the single
+northbound I-15 link covering the crash point (the non-expanded red set
+of the event figure). We compare the unmodified network (\emph{no
+surgery}) with \emph{surgery}, which removes the closed link from the
+network and redistributes its popularity onto the evaluation box.
+Table~\ref{tab:crash-surgery} (previous-week prior) and
+Table~\ref{tab:crash-surgery-sameday} (same-day prior) report the
+results. With only one freeway link closed, surgery shifts the box error
+modestly (about $2\%$), since a single link carries little popularity
+mass to redistribute.
+
+\begin{table}[H]
+\centering
+\caption{I-15 Draper crash: Overall MRE with and without surgery, under
+the previous-week prior.}
+\label{tab:crash-surgery}
+\setlength{\tabcolsep}{8pt}
+\begin{tabular}{lcc}
+\toprule
+                  & eval box & whole network \\
+\cmidrule(lr){2-2}\cmidrule(lr){3-3}
+model (condition) & OV. MRE (st. dev) & OV. MRE (st. dev) \\
+\midrule
+SP (no surgery) & $1.8382$ ($0.7570$) & $1.7438$ ($0.7269$) \\
+\rowcolor{gray!15} SP (surgery) & $1.8011$ ($0.7488$) & $1.7456$ ($0.7278$) \\
+\midrule
+TP (no surgery) & $1.8475$ ($0.7605$) & $1.7374$ ($0.7259$) \\
+TP (surgery) & $1.8178$ ($0.7549$) & $1.7395$ ($0.7269$) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Case study 2: Large Sporting Event}\label{sec:stadium}
+
+A Saturday football game at Rice-Eccles Stadium (Washington at Utah,
+2018-09-15, kickoff 20:00, attendance 47{,}445) is a pure demand event:
+it closes no road, it concentrates trips around the venue. We therefore
+keep the full network and intervene only on the prior. We score on an
+evaluation box centred on the stadium (Fig.~\ref{fig:stadium-map};
+$1{,}367$ links) over the 72 five-minute bins from 18:00 to 23:55
+(arrival, game, departure), comparing the chain output to the game-day
+popularity. The fed prior is the previous week's diffused origins (the
+clean Saturday 2018-09-08, same hours); both chains use the speed and
+lane exponents (single phase $\alpha=0.0508$; two-phase up/down
+$\beta=0.102$, $\rho=0.101$).
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{figures/rice_eccles_event_links_GPT.pdf}
+\caption{Rice-Eccles study area: the evaluation box (dashed) and the
+stadium (marker); no links are closed.}
+\label{fig:stadium-map}
+\end{figure}
+
+\paragraph{Reweighting the prior.} Partition the links into the
+evaluation box $B$ and its complement $A$, with prior masses
+$a=\sum_{x\in A}p(x)$ and $b=\sum_{x\in B}p(x)$, $a+b=1$. We move a mass
+$\gamma$ from $A$ into $B$:
+\begin{equation}\label{eq:gamma}
+q(x)=p(x)\left(1-\frac{\gamma}{a}\right)\ \ (x\in A),
+\qquad
+q(x)=p(x)\left(1+\frac{\gamma}{b}\right)\ \ (x\in B).
+\end{equation}
+This keeps $q$ a probability distribution ($\sum_x q(x)=1$) and stays
+non-negative for $-b<\gamma<a$. A positive $\gamma$ concentrates the fed
+demand on the stadium box, a negative $\gamma$ thins it, and $\gamma=0$
+recovers the unmodified previous-week prior; the shape within each block
+is unchanged, only the box's share of the mass moves.
+
+\paragraph{Learning $\gamma$.} We treat $\gamma$ as the single free
+parameter and choose it to minimise the eval-box Overall MRE on a
+training portion of the data, then report the error on a held-out
+portion. We validate it over the $1{,}367$ \emph{box links} (random
+$75\%$ train, $25\%$ test), repeated under 5-fold cross-validation with a
+fixed seed; the single-phase and two-phase models are fit independently.
+
+\paragraph{Results.} The box MRE is a smooth, single-minimum function of
+$\gamma$, bottoming near $\gamma^\star\approx-0.009$, while the
+whole-network MRE stays flat at $\approx0.93$.
+Table~\ref{tab:stadium-gamma} gives the learned $\gamma^\star$ and the
+held-out box MRE under 5-fold cross-validation. The learned value is
+effectively constant ($\gamma^\star\approx-0.0088$) across both models
+and every fold, and it roughly halves the held-out box MRE (from
+$\approx1.02$ at $\gamma=0$ to $\approx0.42$, a $\sim60\%$ reduction).
+Thus a single, data-light scalar fit on a subset of links transfers
+cleanly to the held-out remainder.
+
+\begin{table}[H]
+\centering
+\caption{Stadium: learned prior-transfer $\gamma^\star$ with train and
+held-out test eval-box Overall MRE (5-fold CV mean; standard deviation
+over bins in parentheses) versus the unmodified prior.}
+\label{tab:stadium-gamma}
+\setlength{\tabcolsep}{8pt}
+\begin{tabular}{lccc}
+\toprule
+model ($\gamma^\star$) & \shortstack{train\\OV. MRE\\ (st.dev)} & \shortstack{test\\OV. MRE\\ (st.dev)} & \shortstack{OV. MRE\\at $\gamma{=}0$\\ (st.dev)} \\
+\midrule
+SP ($-0.0090$) & $0.4175$ ($0.07$) & $0.4184$ ($0.07$) & $1.0253$ ($0.31$) \\
+\rowcolor{gray!15}TP ($-0.0088$) & $0.4022$ ($0.07$) & $0.4022$ ($0.07$) & $1.0128$ ($0.31$) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+\subsection{Case study 3: 9th \& 9th festival}
+
+The 9th \& 9th Street Festival (Saturday 2018-09-15, 10:00 to 17:55)
+closes 900~South and 900~East at the 9th-and-9th intersection, $14$ links
+in all (Fig.~\ref{fig:festival-map}). As in the stadium study
+(\S\ref{sec:stadium}), we feed the previous week's diffused origins (the
+clean Saturday 2018-09-08) and score the eval-box Overall MRE, here over
+the $96$ five-minute bins of the festival window, with both chains using
+the same speed and lane exponents. Unlike the stadium, the festival also
+removes links, so we examine surgery, the learned prior transfer, and
+their combination.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{figures/festival_event_links_GPT.pdf}
+\caption{9th \& 9th festival study area: the $14$ closed links (red), the
+evaluation box (dashed), and the same area on the basemap.}
+\label{fig:festival-map}
+\end{figure}
+
+\paragraph{Surgery.} Surgery (as defined for the crash, \S\ref{sec:crash})
+removes the $14$ closed links and redistributes their popularity onto the
+box; on its own it shifts the box error only $1$--$2\%$
+(Table~\ref{tab:festival-surgery}).
+
+\begin{table}[H]
+\centering
+\caption{Festival: eval-box Overall MRE with and without surgery
+(previous-week prior, no $\gamma$).}
+\label{tab:festival-surgery}
+\setlength{\tabcolsep}{10pt}
+\begin{tabular}{lrr}
+\toprule
+condition & SP & TP \\
+\midrule
+no surgery & $1.5094$ & $1.4733$ \\
+surgery    & $1.4945$ & $1.4561$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Learned transfer.} We apply the prior mass-transfer $\gamma$ of
+\S\ref{sec:stadium} (Eq.~\ref{eq:gamma}), on the full network and on top
+of surgery, selecting it with the same link train/test protocol under
+5-fold cross-validation. Table~\ref{tab:festival-gamma} reports the
+learned $\gamma^\star$ and the train and held-out test box MRE (5-fold CV
+mean). As in the stadium case, $\gamma^\star$ is near-constant
+($\approx-0.0056$) across models and folds, with train and test in
+agreement. The transfer is the dominant lever, cutting the box MRE from
+$\approx1.5$ to $\approx0.58$ (single phase) and $\approx0.53$ (two-phase),
+about $60\%$, whereas surgery alone gives only $1$--$2\%$; combining the
+two helps only marginally beyond $\gamma$ alone.
+
+\begin{table}[H]
+\centering
+\caption{Festival: learned prior transfer $\gamma^\star$ with train and
+held-out test eval-box MRE (5-fold CV mean), versus the unmodified prior.}
+\label{tab:festival-gamma}
+\setlength{\tabcolsep}{8pt}
+\begin{tabular}{lrrrr}
+\toprule
+config. (model) & $\gamma^\star$ & \shortstack{train\\MRE} & \shortstack{test\\MRE} & \shortstack{MRE\\at $\gamma{=}0$} \\
+\midrule
+$\gamma$ only (SP)      & $-0.0057$ & $0.5799$ & $0.5799$ & $1.5235$ \\
+$\gamma$ only (TP)      & $-0.0057$ & $0.5315$ & $0.5316$ & $1.4858$ \\
+\midrule
+$\gamma$ + surgery (SP) & $-0.0056$ & $0.5715$ & $0.5715$ & $1.4940$ \\
+\rowcolor{gray!15}$\gamma$ + surgery (TP) & $-0.0056$ & $0.5219$ & $0.5219$ & $1.4561$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+\section{Ablation / Appendix}
+\label{sec:ablation}
 
 The evaluation framework
 (\cref{sec:evaluation-framework}) defines the metric (Overall
@@ -1497,205 +2196,6 @@ $\frac{|p_i|}{\varepsilon}$ each; $\varepsilon = 10^{-6}$ caps
 this contribution but does not eliminate it. With every truth
 value positive, the Overall MRE drops to $0.67$--$1.37$, a range
 in which the metric is interpretable as a relative error average.
-
-\subsection{Additive ladder: road-type tuning with calibrated chain dynamics}
-\label{sec:ladder}
-
-This subsection isolates the contributions of damping and road-type
-weighting on the same evaluation sample. The sample is the set of
-$840$ calendar pairs $(t,\,t{+}7\,\text{d})$ used throughout this
-section, drawn so that exactly $120$ pairs sit on each day of the
-week (seed $7$), with $t$ chosen from the first $23$ days of the
-corpus so that the next-week sibling is in range. The model
-receives $\tilde E_b(t)$ and predicts $\tilde E_b(t{+}7\,\text{d})$.
-The per-pair error is the Overall MRE (over all $N$ links), and we
-report its mean across the $840$ pairs.
-
-\paragraph{Damping sweep (no road-type tuning).}
-We first hold $\alpha_s = \alpha_l = 0$ and sweep the damping
-rate. For the single-phase chain the rate is $\alpha$. For the
-two-phase chain we set $\beta = \rho$ and sweep the common value,
-so that the two columns differ only by the chain structure.
-
-\begin{table}[H]
-\centering
-\caption{Damping sweep on the whole network, $840$ pairs
-$(t,\,t{+}7\,\text{d})$, no road-type weighting. Overall MRE
-(lower is better); bold marks the best in each column.}
-\label{tab:ladder-damping}
-\small
-\setlength{\tabcolsep}{12pt}
-\begin{tabular}{ccc}
-\toprule
-rate & Single-phase ($\alpha$) & Two-phase ($\beta\!=\!\rho$) \\
-\midrule
-$0.03$ & $1.130$ & $1.181$ \\
-$0.04$ & $1.098$ & $1.154$ \\
-$0.05$ & $1.072$ & $1.131$ \\
-$0.06$ & $1.049$ & $1.110$ \\
-$0.07$ & $1.029$ & $1.091$ \\
-$0.15$ & $\mathbf{0.923}$ & $\mathbf{0.984}$ \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-Both columns improve monotonically as the damping rate increases
-toward the upper bound of the search box. With \emph{no
-road-type weighting} single-phase outperforms two-phase at every
-common rate by approximately $0.05$--$0.06$ on Overall MRE.
-
-\paragraph{Road-type tuning with calibrated chain dynamics.}
-\Cref{tab:ladder-tuning} flips the comparison: the chain dynamics
-are now \emph{pinned} at the geometric-fit values estimated from
-the data ($\alpha = 0.0508$ for the single-phase chain;
-$\beta = 0.102$, $\rho = 0.101$ for the two-phase chain in its
-main-body form). Only the road-type exponents $\alpha_s$ and
-$\alpha_l$ are learned by the optimizer (L-BFGS-B, five random
-starts, finite-difference gradients, unbounded). Five rows are
-shown per chain:
-%
-\begin{itemize}\setlength\itemsep{0pt}
-\item \emph{uniform prior}: $E_b = \mathbf{1}/N$, no road-type
-      tuning;
-\item \emph{diffuse prior}: $E_b = \tilde E_b(t)$, no road-type
-      tuning;
-\item $+$\emph{lanes only}, $+$\emph{speed only}, $+$\emph{both}:
-      progressively add the road-type exponents.
-\end{itemize}
-%
-The two blocks of the table differ only by the chain. Once the
-dynamics are calibrated from the data, the picture in
-\cref{tab:ladder-damping} reverses: the two-phase chain beats
-single-phase at every row of the ladder by about $0.02$--$0.03$
-on Overall MRE, with the gap widening once road-type weights are
-introduced.
-
-\begin{table}[H]
-\centering
-\caption{Single-phase (SP) vs.\ two-phase new-form (TP) on the
-$840$-pair eval, with chain dynamics \emph{fixed} at the
-geometric-fit values. The optimizer only learns the road-type
-exponents $\alpha_s, \alpha_l$ (unbounded); the chain
-parameters $\alpha$, $\beta$, $\rho$ are never touched.
-``$-$'' means no road-type tuning. TP beats SP at every row.}
-\label{tab:ladder-tuning}
-\setlength{\tabcolsep}{3pt}
-\renewcommand{\arraystretch}{1.25}
-\begin{tabular}{|p{0.22\linewidth}|p{0.50\linewidth}|r|}
-\hline
-variant & parameters at the optimum & Ov.\ MRE \\
-\hline\hline
-\multicolumn{3}{|l|}{\emph{Single-phase}\quad ($\alpha\!=\!0.0508$ fixed)} \\
-\hline
-uniform prior  & $E_b\!=\!\mathbf{1}/N$                                                            & $1.3127$ \\
-\hline
-diffuse prior  & $E_b$ from the diffused popularity                                                 & $1.0697$ \\
-\hline
-$+$ lanes only & $\alpha_l\!=\!+0.411$                                                              & $1.0596$ \\
-\hline
-$+$ speed only & $\alpha_s\!=\!+3.050$                                                              & $1.0028$ \\
-\hline
-$+$ both       & $\alpha_s\!=\!+2.775$, $\alpha_l\!=\!+0.242$                                       & $0.9997$ \\
-\hline\hline
-\multicolumn{3}{|l|}{\emph{Two-phase (new form)}\quad ($\beta\!=\!0.102$, $\rho\!=\!0.101$ fixed)} \\
-\hline
-uniform prior  & $E_b\!=\!\mathbf{1}/N$                                                            & $1.3119$ \\
-\hline
-diffuse prior  & $E_b$ from the diffused popularity                                                 & $1.0413$ \\
-\hline
-$+$ lanes only & $\alpha_l\!=\!+0.377$                                                              & $1.0323$ \\
-\hline
-$+$ speed only & $\alpha_s\!=\!+3.052$                                                              & $0.9725$ \\
-\hline
-$+$ both       & $\alpha_s\!=\!+2.816$, $\alpha_l\!=\!+0.210$                                       & $\mathbf{0.9701}$ \\
-\hline
-\end{tabular}
-\end{table}
-\section{Case study: detecting an unannounced event}
-\label{sec:fair-case-study}
-
-\paragraph{1.\ Detection from the ground truth.}
-For every $5$-minute slot $t$ we compare the raw map-matched
-counts at $t$ and at $t + 7$ days, restricted to links carrying
-at least five trips at $t$:
-\begin{equation}
-\mathrm{MRE}(t) \;=\;
-\frac{1}{|S(t)|}\sum_{i \in S(t)}
-\frac{|c_{t+7}(i) - c_t(i)|}{c_t(i)},
-\;\;
-S(t) = \{i : c_t(i) \geq 5\}.
-\label{eq:slot-mre}
-\end{equation}
-\Cref{fig:fair-detect} plots the per-slot $\mathrm{MRE}$
-distribution for three consecutive week-pair comparisons.
-W2$\to$W3 has a markedly heavier right tail than W1$\to$W2 or
-W3$\to$W4: there exist W2 slots whose twin in W3 looks very
-different. Inspecting that tail, the twelve consecutive
-$5$-minute bins of Tue Sep 11 $16{:}00$--$17{:}00$ all sit
-inside it (mean per-slot $\mathrm{MRE}$ on the hour: $0.694$,
-versus the top-$24$ cutoff $0.683$ in the $\mathrm{W2\!\to\!W3}$
-distribution). This hour is the event window we take into the
-rest of the case study.
-
-\begin{figure}[h]
-\centering
-\includegraphics[width=\linewidth]{figures/detect_hist.pdf}
-\caption{Per-slot $\mathrm{MRE}$ for three consecutive week-pair
-comparisons. W2$\to$W3 has the heaviest right tail; the dashed
-line in each panel marks that distribution's top-$24$ cutoff.}
-\label{fig:fair-detect}
-\end{figure}
-
-\paragraph{2.\ Localize the event to a known landmark.}
-Within each of the twelve $5$-minute bins of the event hour
-$16{:}00$--$17{:}00$, we compute the per-link difference
-$c_{\mathrm{Sep11}}(t,i) - c_{\mathrm{Sep18}}(t,i)$ on the raw
-counts, keeping only bins where $c_{\mathrm{Sep11}}(t,i) \geq 5$
-to ignore noise from near-zero baselines. Averaging this
-difference over the eligible bins per link and ranking, the
-top-$200$ links concentrate on parts of the network where Sep 11
-afternoon traffic was substantially higher than Sep 18
-afternoon. We then test whether those top-$200$ overlap with a
-known landmark in SLC by centering a $2km$
-radius circle at $(40.7223^{\circ}\mathrm{N},
--111.9047^{\circ}\mathrm{W})$ and counting top-$200$ links
-falling inside it. \emph{Fifteen} of the $200$ sit inside the
-circle, hugging the I-$15$ corridor that runs through the
-landmark area (\cref{fig:circle-region-map}). The remaining
-$185$ links sit further south, in a separate Cottonwood Heights
-cluster.
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=\linewidth]{figures/circle_region_map.pdf}
-\caption{Fifteen of the top-$200$ per-slot-difference links inside
-a $2km$ radius circle at the chosen landmark, on
-the local road network (grey). Light blue marks the freeway
-($70$,mph) segments.}
-\label{fig:circle-region-map}
-\end{figure}
-
-\paragraph{3.\ The anomaly on the localized $15$-link region.}
-We now restrict attention to those $15$ links and compare the
-event hour against three reference Tuesdays.
-\Cref{fig:region-bars} plots the total trips per $5$-minute bin
-on the $15$-link region for Tue Sep 18 (the anomalous week 3 day
-on this corridor) against the average over Tue Sep 4, Sep 11,
-and Sep 25. Across all twelve bins Sep 18 sits well below the
-reference average; the hour total is $309$ trips on Sep 18
-against $783$ on the reference average, roughly a $2.5\times$
-drop. 
-\begin{figure}[H]
-\centering
-\includegraphics[width=\linewidth]{figures/region_bars.pdf}
-\caption{Trips per $5$-min bin in $16{:}00$--$17{:}00$, Tue Sep
-18 vs the average over Sep 4, 11, 25.}
-\label{fig:region-bars}
-\end{figure}
-
-
-
-
 
 
 
@@ -1862,4 +2362,579 @@ Xiao Liang, Jichang Zhao, Li Dong, and Ke Xu.
 \end{thebibliography}
 
 
+
+
+
+% \newpage
+% ~
+% \newpage
+% \begin{table*}[t]
+% \centering
+% \caption{Single-phase origin-informed forecast ($\delta=0$,
+% $\alpha_{\text{ang}}\ge 0$, ), trained on the
+% first 23 days, evaluated on the last 7. The \texttt{fcast} columns are the
+% 7-day-ahead forecast (each test slot fed the origins from 7 days
+% earlier).\hamid{based on what professor said I should keep these table but no need to mention $\alpha_{ang}$ at all}}
+% \label{tab:sp-forecast-norm}
+% \setlength{\tabcolsep}{3pt}
+% \begin{tabular}{|l|r|r|>{\columncolor{red!35}}r|r|r|r|r|r|r|r|r|r|}
+% \hline
+% mode & $\alpha_s$ & $\alpha_l$ & $\alpha_{\text{ang}}$
+%  & \makecell{train\\mean} & \makecell{train\\median} & \makecell{train\\dev}
+%  & \makecell{test\\mean} & \makecell{test\\median} & \makecell{test\\dev}
+%  & \makecell{fcast\\mean} & \makecell{fcast\\median} & \makecell{fcast\\dev} \\
+% \hline
+% \texttt{uniform}          &   ---    &   ---    &   ---    & $1.1739$ & $0.9544$ & $0.8309$ & $1.2706$ & $1.0545$ & $0.8625$ & $1.2706$ & $1.0545$ & $0.8625$ \\
+% \hline
+% \texttt{origin}           &   ---    &   ---    &   ---    & $1.1266$ & $0.9311$ & $0.7818$ & $1.2178$ & $1.0277$ & $0.8117$ & $1.2401$ & $1.0411$ & $0.8310$ \\
+% \hline
+% \texttt{sp.}              & $+2.242$ &   ---    &   ---    & $1.1096$ & $0.9179$ & $0.7466$ & $1.1963$ & $1.0109$ & $0.7759$ & $1.2197$ & $1.0258$ & $0.7960$ \\
+% \hline
+% \texttt{la.}              &   ---    & $+0.673$ &   ---    & $1.1136$ & $0.9209$ & $0.7586$ & $1.2018$ & $1.0153$ & $0.7884$ & $1.2252$ & $1.0296$ & $0.8086$ \\
+% \hline
+% \rowcolor{red!35}\texttt{ang.}             &   ---    &   ---    & $+0.000$ & $1.1266$ & $0.9311$ & $0.7818$ & $1.2178$ & $1.0277$ & $0.8117$ &   ---    &   ---    &   ---    \\
+% \hline
+% \texttt{sp. + la.}        & $+1.751$ & $+0.436$ &   ---    & $1.1045$ & $0.9138$ & $0.7383$ & $1.1903$ & $1.0057$ & $0.7675$ & $1.2141$ & $1.0211$ & $0.7879$ \\
+% \hline
+% \rowcolor{red!35}\texttt{la. + ang.}       &   ---    & $+0.673$ & $+0.000$ & $1.1136$ & $0.9209$ & $0.7586$ & $1.2018$ & $1.0153$ & $0.7885$ &   ---    &   ---    &   ---    \\
+% \hline
+% \rowcolor{red!35}\texttt{sp. + ang.}       & $+2.243$ &   ---    & $+0.000$ & $1.1096$ & $0.9179$ & $0.7466$ & $1.1963$ & $1.0109$ & $0.7759$ &   ---    &   ---    &   ---    \\
+% \hline
+% \rowcolor{red!35}\texttt{sp. + la. + ang.} & $+1.893$ & $+0.410$ & $+0.000$ & $1.1046$ & $0.9137$ & $0.7364$ & $1.1902$ & $1.0054$ & $0.7655$ &   ---    &   ---    &   ---    \\
+% \hline
+% \end{tabular}
+% \end{table*}
+
+% \begin{table*}[t]
+% \centering
+% \caption{Two-phase up/down origin-informed forecast (separate
+% $P^{\uparrow}$/$P^{\downarrow}$; $\delta=0$, $\alpha_{\text{ang}}\ge 0$
+% shared; $\beta=0.102$, $\rho=0.101$), trained on
+% the first 23 days, evaluated on the last 7. The \texttt{fcast} columns are
+% the 7-day-ahead forecast (each test slot fed the origins from 7 days
+% earlier).}
+% \label{tab:tp-forecast-updown}
+% \setlength{\tabcolsep}{2pt}
+% \begin{tabular}{|l|r|r|r|r|>{\columncolor{red!35}}r|r|r|r|r|r|r|r|r|r|}
+% \hline
+% mode & $\alpha_s^{\uparrow}$ & $\alpha_s^{\downarrow}$
+%  & $\alpha_l^{\uparrow}$ & $\alpha_l^{\downarrow}$ & $\alpha_{\text{ang}}$
+%  & \makecell{train\\mean} & \makecell{train\\median} & \makecell{train\\dev}
+%  & \makecell{test\\mean} & \makecell{test\\median} & \makecell{test\\dev}
+%  & \makecell{fcast\\mean} & \makecell{fcast\\median} & \makecell{fcast\\dev} \\
+% \hline
+% \texttt{uniform}          &   ---    &   ---    &   ---    &   ---    &   ---    & $1.1732$ & $0.9540$ & $0.8309$ & $1.2698$ & $1.0540$ & $0.8625$ & $1.2698$ & $1.0540$ & $0.8625$ \\
+% \hline
+% \texttt{origin}           &   ---    &   ---    &   ---    &   ---    &   ---    & $1.1211$ & $0.9278$ & $0.7768$ & $1.2117$ & $1.0243$ & $0.8065$ & $1.2365$ & $1.0395$ & $0.8279$ \\
+% \hline
+% \texttt{sp.}              & $+6.960$ & $-1.518$ &   ---    &   ---    & $+0.000$ & $1.0990$ & $0.9131$ & $0.7446$ & $1.1852$ & $1.0057$ & $0.7739$ & $1.2117$ & $1.0229$ & $0.7966$ \\
+% \hline
+% \texttt{la.}              &   ---    &   ---    & $+2.320$ & $-0.658$ & $+0.000$ & $1.1034$ & $0.9155$ & $0.7490$ & $1.1902$ & $1.0088$ & $0.7786$ & $1.2176$ & $1.0263$ & $0.8020$ \\
+% \hline
+% \rowcolor{red!35}\texttt{ang.}             &   ---    &   ---    &   ---    &   ---    & $+0.000$ & $1.1211$ & $0.9278$ & $0.7768$ & $1.2117$ & $1.0243$ & $0.8065$ &   ---    &   ---    &   ---    \\
+% \hline
+% \texttt{sp. + la.}        & $+4.649$ & $-0.572$ & $+1.161$ & $-0.167$ & $+0.000$ & $1.0948$ & $0.9091$ & $0.7375$ & $1.1801$ & $1.0009$ & $0.7667$ & $1.2072$ & $1.0189$ & $0.7899$ \\
+% \hline
+% \rowcolor{red!35}\texttt{la. + ang.}       &   ---    &   ---    & $+2.319$ & $-0.660$ & $+0.000$ & $1.1034$ & $0.9155$ & $0.7490$ & $1.1902$ & $1.0088$ & $0.7787$ &   ---    &   ---    &   ---    \\
+% \hline
+% \rowcolor{red!35}\texttt{sp. + ang.}       & $+7.100$ & $-1.602$ &   ---    &   ---    & $+0.000$ & $1.0990$ & $0.9131$ & $0.7446$ & $1.1852$ & $1.0058$ & $0.7739$ &   ---    &   ---    &   ---    \\
+% \hline
+% \rowcolor{red!35}\texttt{sp. + la. + ang.} & $+4.388$ & $-0.457$ & $+1.184$ & $-0.173$ & $+0.000$ & $1.0948$ & $0.9090$ & $0.7375$ & $1.1802$ & $1.0009$ & $0.7667$ &   ---    &   ---    &   ---    \\
+% \hline
+% \end{tabular}
+% \end{table*}
+
+
+
+
+
+% ~
+% \newpage
+% ~
+% \newpage
+% ~
+% \newpage
+% \begin{table}[H]
+% \centering
+% \caption{Baselines with flipped split: test $=$ first 7 days,
+% train $=$ remaining 23 days.}
+% \setlength{\tabcolsep}{4pt}
+% \begin{tabular}{|l|r|r|r|r|r|r|}
+% \hline
+% mode & \cellcolor{gray!25}\makecell{train\\mean} & \makecell{train\\median} & \makecell{train\\dev}
+%  & \cellcolor{gray!25}\makecell{test\\mean} & \makecell{test\\median} & \makecell{test\\dev} \\
+% \hline
+% \multicolumn{7}{|l|}{\textit{Single-phase, $\alpha=0.0508$}} \\
+% \hline
+% \texttt{uniform} & \cellcolor{gray!25}$1.2214$ & $0.9967$ & $0.8439$ & \cellcolor{gray!25}$1.1145$ & $0.8895$ & $0.8190$ \\
+% \hline
+% \texttt{origin}  & \cellcolor{gray!25}$1.1715$ & $0.9715$ & $0.7939$ & \cellcolor{gray!25}$1.0703$ & $0.8670$ & $0.7712$ \\
+% \hline
+% \multicolumn{7}{|l|}{\textit{Two-phase, $\beta=0.102$, $\rho=0.101$}} \\
+% \hline
+% \texttt{uniform} & \cellcolor{gray!25}$1.2207$ & $0.9962$ & $0.8439$ & \cellcolor{gray!25}$1.1137$ & $0.8890$ & $0.8190$ \\
+% \hline
+% \texttt{origin}  & \cellcolor{gray!25}$1.1657$ & $0.9684$ & $0.7888$ & \cellcolor{gray!25}$1.0651$ & $0.8642$ & $0.7663$ \\
+% \hline
+% \end{tabular}
+% \end{table}
+
+
+% \begin{table}[H]
+% \centering
+% \caption{Baselines with split: test $=$ second 7 days,
+% train $=$ remaining 23 days.}
+% \setlength{\tabcolsep}{4pt}
+% \begin{tabular}{|l|r|r|r|r|r|r|}
+% \hline
+% mode & \cellcolor{gray!25}\makecell{train\\mean} & \makecell{train\\median} & \makecell{train\\dev}
+%  & \cellcolor{gray!25}\makecell{test\\mean} & \makecell{test\\median} & \makecell{test\\dev} \\
+% \hline
+% \multicolumn{7}{|l|}{\textit{Single-phase, $\alpha=0.0508$}} \\
+% \hline
+% \texttt{uniform} & \cellcolor{gray!25}$1.1700$ & $0.9507$ & $0.8247$ & \cellcolor{gray!25}$1.2836$ & $1.0582$ & $0.8802$ \\
+% \hline
+% \texttt{origin}  & \cellcolor{gray!25}$1.1232$ & $0.9263$ & $0.7763$ & \cellcolor{gray!25}$1.2290$ & $1.0304$ & $0.8277$ \\
+% \hline
+% \multicolumn{7}{|l|}{\textit{Two-phase, $\beta=0.102$, $\rho=0.101$}} \\
+% \hline
+% \texttt{uniform} & \cellcolor{gray!25}$1.1692$ & $0.9502$ & $0.8247$ & \cellcolor{gray!25}$1.2828$ & $1.0577$ & $0.8802$ \\
+% \hline
+% \texttt{origin}  & \cellcolor{gray!25}$1.1177$ & $0.9235$ & $0.7713$ & \cellcolor{gray!25}$1.2227$ & $1.0271$ & $0.8223$ \\
+% \hline
+% \end{tabular}
+% \end{table}
+
+
+% \begin{table}[H]
+% \centering
+% \caption{Baselines with split: test $=$ third 7 days,
+% train $=$ remaining 23 days.}
+% \setlength{\tabcolsep}{4pt}
+% \begin{tabular}{|l|r|r|r|r|r|r|}
+% \hline
+% mode & \cellcolor{gray!25}\makecell{train\\mean} & \makecell{train\\median} & \makecell{train\\dev}
+%  & \cellcolor{gray!25}\makecell{test\\mean} & \makecell{test\\median} & \makecell{test\\dev} \\
+% \hline
+% \multicolumn{7}{|l|}{\textit{Single-phase, $\alpha=0.0508$}} \\
+% \hline
+% \texttt{uniform} & \cellcolor{gray!25}$1.1823$ & $0.9489$ & $0.8395$ & \cellcolor{gray!25}$1.2432$ & $1.0355$ & $0.8370$ \\
+% \hline
+% \texttt{origin}  & \cellcolor{gray!25}$1.1345$ & $0.9265$ & $0.7903$ & \cellcolor{gray!25}$1.1917$ & $1.0050$ & $0.7867$ \\
+% \hline
+% \multicolumn{7}{|l|}{\textit{Two-phase, $\beta=0.102$, $\rho=0.101$}} \\
+% \hline
+% \texttt{uniform} & \cellcolor{gray!25}$1.1815$ & $0.9484$ & $0.8396$ & \cellcolor{gray!25}$1.2424$ & $1.0350$ & $0.8370$ \\
+% \hline
+% \texttt{origin}  & \cellcolor{gray!25}$1.1289$ & $0.9237$ & $0.7853$ & \cellcolor{gray!25}$1.1858$ & $1.0005$ & $0.7815$ \\
+% \hline
+% \end{tabular}
+% \end{table}
+
+
+
+% ~\newpage
+% ~\newpage
+% \begin{table}[H]
+% \centering
+% \caption{Baselines with split: test $=$ day 4--11 (7 days),
+% train $=$ remaining 23 days.}
+% \setlength{\tabcolsep}{4pt}
+% \begin{tabular}{|l|r|r|r|r|r|r|}
+% \hline
+% mode & \cellcolor{gray!25}\makecell{train\\mean} & \makecell{train\\median} & \makecell{train\\dev}
+%  & \cellcolor{gray!25}\makecell{test\\mean} & \makecell{test\\median} & \makecell{test\\dev} \\
+% \hline
+% \multicolumn{7}{|l|}{\textit{Single-phase, $\alpha=0.0508$}} \\
+% \hline
+% \texttt{uniform} & \cellcolor{gray!25}$1.1809$ & $0.9570$ & $0.8310$ & \cellcolor{gray!25}$1.2478$ & $1.0189$ & $0.8641$ \\
+% \hline
+% \texttt{origin}  & \cellcolor{gray!25}$1.1334$ & $0.9350$ & $0.7820$ & \cellcolor{gray!25}$1.1954$ & $0.9924$ & $0.8131$ \\
+% \hline
+% \multicolumn{7}{|l|}{\textit{Two-phase, $\beta=0.102$, $\rho=0.101$}} \\
+% \hline
+% \texttt{uniform} & \cellcolor{gray!25}$1.1801$ & $0.9565$ & $0.8310$ & \cellcolor{gray!25}$1.2470$ & $1.0185$ & $0.8641$ \\
+% \hline
+% \texttt{origin}  & \cellcolor{gray!25}$1.1279$ & $0.9321$ & $0.7770$ & \cellcolor{gray!25}$1.1893$ & $0.9890$ & $0.8079$ \\
+% \hline
+% \end{tabular}
+% \end{table}
+
+
+% \begin{table}[H]
+% \centering
+% \caption{Baselines with split: test $=$ day 17--24 (7 days),
+% train $=$ remaining 23 days.}
+% \setlength{\tabcolsep}{4pt}
+% \begin{tabular}{|l|r|r|r|r|r|r|}
+% \hline
+% mode & \cellcolor{gray!25}\makecell{train\\mean} & \makecell{train\\median} & \makecell{train\\dev}
+%  & \cellcolor{gray!25}\makecell{test\\mean} & \makecell{test\\median} & \makecell{test\\dev} \\
+% \hline
+% \multicolumn{7}{|l|}{\textit{Single-phase, $\alpha=0.0508$}} \\
+% \hline
+% \texttt{uniform} & \cellcolor{gray!25}$1.1880$ & $0.9611$ & $0.8377$ & \cellcolor{gray!25}$1.2244$ & $0.9923$ & $0.8441$ \\
+% \hline
+% \texttt{origin}  & \cellcolor{gray!25}$1.1401$ & $0.9393$ & $0.7886$ & \cellcolor{gray!25}$1.1735$ & $0.9670$ & $0.7934$ \\
+% \hline
+% \multicolumn{7}{|l|}{\textit{Two-phase, $\beta=0.102$, $\rho=0.101$}} \\
+% \hline
+% \texttt{uniform} & \cellcolor{gray!25}$1.1872$ & $0.9606$ & $0.8377$ & \cellcolor{gray!25}$1.2236$ & $0.9917$ & $0.8441$ \\
+% \hline
+% \texttt{origin}  & \cellcolor{gray!25}$1.1345$ & $0.9365$ & $0.7836$ & \cellcolor{gray!25}$1.1676$ & $0.9640$ & $0.7882$ \\
+% \hline
+% \end{tabular}
+% \end{table}
+
+
+% \begin{table}[H]
+% \centering
+% \caption{Baselines with split: test $=$ day 12--19 (7 days),
+% train $=$ remaining 23 days.}
+% \setlength{\tabcolsep}{4pt}
+% \begin{tabular}{|l|r|r|r|r|r|r|}
+% \hline
+% mode & \cellcolor{gray!25}\makecell{train\\mean} & \makecell{train\\median} & \makecell{train\\dev}
+%  & \cellcolor{gray!25}\makecell{test\\mean} & \makecell{test\\median} & \makecell{test\\dev} \\
+% \hline
+% \multicolumn{7}{|l|}{\textit{Single-phase, $\alpha=0.0508$}} \\
+% \hline
+% \texttt{uniform} & \cellcolor{gray!25}$1.1743$ & $0.9469$ & $0.8328$ & \cellcolor{gray!25}$1.2692$ & $1.0460$ & $0.8564$ \\
+% \hline
+% \texttt{origin}  & \cellcolor{gray!25}$1.1272$ & $0.9249$ & $0.7840$ & \cellcolor{gray!25}$1.2159$ & $1.0170$ & $0.8048$ \\
+% \hline
+% \multicolumn{7}{|l|}{\textit{Two-phase, $\beta=0.102$, $\rho=0.101$}} \\
+% \hline
+% \texttt{uniform} & \cellcolor{gray!25}$1.1736$ & $0.9464$ & $0.8329$ & \cellcolor{gray!25}$1.2685$ & $1.0455$ & $0.8564$ \\
+% \hline
+% \texttt{origin}  & \cellcolor{gray!25}$1.1216$ & $0.9217$ & $0.7791$ & \cellcolor{gray!25}$1.2097$ & $1.0138$ & $0.7995$ \\
+% \hline
+% \end{tabular}
+% \end{table}
+
+
+% ~\newpage
+% ~\newpage
+
+% % ===================== CATEGORY A: WEEKEND + HOLIDAY =====================
+% \begin{table}[H]\centering
+% \caption{Weekend+holiday. Test $=$ last 25\% (train $=$ first 75\%).}
+% \setlength{\tabcolsep}{4pt}
+% \begin{tabular}{|l|r|r|r|r|r|r|}
+% \hline
+% mode & \cellcolor{gray!25}\makecell{train\\mean} & \makecell{train\\median} & \makecell{train\\dev}
+%  & \cellcolor{gray!25}\makecell{test\\mean} & \makecell{test\\median} & \makecell{test\\dev} \\
+% \hline
+% \multicolumn{7}{|l|}{\textit{Single-phase, $\alpha=0.0508$}} \\ \hline
+% \texttt{uniform} & \cellcolor{gray!25}$0.7215$ & $0.6893$ & $0.4096$ & \cellcolor{gray!25}$0.7188$ & $0.7291$ & $0.4056$ \\ \hline
+% \texttt{origin}  & \cellcolor{gray!25}$0.7042$ & $0.6750$ & $0.3961$ & \cellcolor{gray!25}$0.7017$ & $0.7152$ & $0.3928$ \\ \hline
+% \multicolumn{7}{|l|}{\textit{Two-phase, $\beta=0.102$, $\rho=0.101$}} \\ \hline
+% \texttt{uniform} & \cellcolor{gray!25}$0.7208$ & $0.6886$ & $0.4098$ & \cellcolor{gray!25}$0.7181$ & $0.7285$ & $0.4059$ \\ \hline
+% \texttt{origin}  & \cellcolor{gray!25}$0.7017$ & $0.6733$ & $0.3949$ & \cellcolor{gray!25}$0.6993$ & $0.7132$ & $0.3916$ \\ \hline
+% \end{tabular}\end{table}
+
+% \begin{table}[H]\centering
+% \caption{Weekend+holiday. Test $=$ first 25\%.}
+% \setlength{\tabcolsep}{4pt}
+% \begin{tabular}{|l|r|r|r|r|r|r|}
+% \hline
+% mode & \cellcolor{gray!25}\makecell{train\\mean} & \makecell{train\\median} & \makecell{train\\dev}
+%  & \cellcolor{gray!25}\makecell{test\\mean} & \makecell{test\\median} & \makecell{test\\dev} \\
+% \hline
+% \multicolumn{7}{|l|}{\textit{Single-phase, $\alpha=0.0508$}} \\ \hline
+% \texttt{uniform} & \cellcolor{gray!25}$0.7454$ & $0.7213$ & $0.4176$ & \cellcolor{gray!25}$0.6470$ & $0.6405$ & $0.3708$ \\ \hline
+% \texttt{origin}  & \cellcolor{gray!25}$0.7273$ & $0.7074$ & $0.4037$ & \cellcolor{gray!25}$0.6323$ & $0.6255$ & $0.3597$ \\ \hline
+% \multicolumn{7}{|l|}{\textit{Two-phase, $\beta=0.102$, $\rho=0.101$}} \\ \hline
+% \texttt{uniform} & \cellcolor{gray!25}$0.7447$ & $0.7207$ & $0.4178$ & \cellcolor{gray!25}$0.6463$ & $0.6398$ & $0.3711$ \\ \hline
+% \texttt{origin}  & \cellcolor{gray!25}$0.7248$ & $0.7055$ & $0.4024$ & \cellcolor{gray!25}$0.6301$ & $0.6235$ & $0.3587$ \\ \hline
+% \end{tabular}\end{table}
+
+% \begin{table}[H]\centering
+% \caption{Weekend+holiday. Test $=$ second 25\%.}
+% \setlength{\tabcolsep}{4pt}
+% \begin{tabular}{|l|r|r|r|r|r|r|}
+% \hline
+% mode & \cellcolor{gray!25}\makecell{train\\mean} & \makecell{train\\median} & \makecell{train\\dev}
+%  & \cellcolor{gray!25}\makecell{test\\mean} & \makecell{test\\median} & \makecell{test\\dev} \\
+% \hline
+% \multicolumn{7}{|l|}{\textit{Single-phase, $\alpha=0.0508$}} \\ \hline
+% \texttt{uniform} & \cellcolor{gray!25}$0.7286$ & $0.7157$ & $0.4091$ & \cellcolor{gray!25}$0.6973$ & $0.6336$ & $0.4061$ \\ \hline
+% \texttt{origin}  & \cellcolor{gray!25}$0.7111$ & $0.7008$ & $0.3958$ & \cellcolor{gray!25}$0.6808$ & $0.6191$ & $0.3928$ \\ \hline
+% \multicolumn{7}{|l|}{\textit{Two-phase, $\beta=0.102$, $\rho=0.101$}} \\ \hline
+% \texttt{uniform} & \cellcolor{gray!25}$0.7279$ & $0.7151$ & $0.4094$ & \cellcolor{gray!25}$0.6966$ & $0.6330$ & $0.4063$ \\ \hline
+% \texttt{origin}  & \cellcolor{gray!25}$0.7087$ & $0.6986$ & $0.3946$ & \cellcolor{gray!25}$0.6785$ & $0.6170$ & $0.3916$ \\ \hline
+% \end{tabular}\end{table}
+
+% \begin{table}[H]\centering
+% \caption{Weekend+holiday. Test $=$ third 25\%.}
+% \setlength{\tabcolsep}{4pt}
+% \begin{tabular}{|l|r|r|r|r|r|r|}
+% \hline
+% mode & \cellcolor{gray!25}\makecell{train\\mean} & \makecell{train\\median} & \makecell{train\\dev}
+%  & \cellcolor{gray!25}\makecell{test\\mean} & \makecell{test\\median} & \makecell{test\\dev} \\
+% \hline
+% \multicolumn{7}{|l|}{\textit{Single-phase, $\alpha=0.0508$}} \\ \hline
+% \texttt{uniform} & \cellcolor{gray!25}$0.6877$ & $0.6716$ & $0.3957$ & \cellcolor{gray!25}$0.8201$ & $0.7727$ & $0.4302$ \\ \hline
+% \texttt{origin}  & \cellcolor{gray!25}$0.6716$ & $0.6568$ & $0.3832$ & \cellcolor{gray!25}$0.7994$ & $0.7602$ & $0.4151$ \\ \hline
+% \multicolumn{7}{|l|}{\textit{Two-phase, $\beta=0.102$, $\rho=0.101$}} \\ \hline
+% \texttt{uniform} & \cellcolor{gray!25}$0.6870$ & $0.6710$ & $0.3959$ & \cellcolor{gray!25}$0.8194$ & $0.7721$ & $0.4304$ \\ \hline
+% \texttt{origin}  & \cellcolor{gray!25}$0.6693$ & $0.6550$ & $0.3821$ & \cellcolor{gray!25}$0.7967$ & $0.7581$ & $0.4137$ \\ \hline
+% \end{tabular}\end{table}
+
+% % ===================== CATEGORY B: WEEKDAY =====================
+% \begin{table}[H]\centering
+% \caption{Weekday. Test $=$ last 25\% (train $=$ first 75\%).}
+% \setlength{\tabcolsep}{4pt}
+% \begin{tabular}{|l|r|r|r|r|r|r|}
+% \hline
+% mode & \cellcolor{gray!25}\makecell{train\\mean} & \makecell{train\\median} & \makecell{train\\dev}
+%  & \cellcolor{gray!25}\makecell{test\\mean} & \makecell{test\\median} & \makecell{test\\dev} \\
+% \hline
+% \multicolumn{7}{|l|}{\textit{Single-phase, $\alpha=0.0508$}} \\ \hline
+% \texttt{uniform} & \cellcolor{gray!25}$1.4409$ & $1.3901$ & $0.9023$ & \cellcolor{gray!25}$1.5324$ & $1.8750$ & $0.8849$ \\ \hline
+% \texttt{origin}  & \cellcolor{gray!25}$1.3757$ & $1.3485$ & $0.8478$ & \cellcolor{gray!25}$1.4630$ & $1.7951$ & $0.8313$ \\ \hline
+% \multicolumn{7}{|l|}{\textit{Two-phase, $\beta=0.102$, $\rho=0.101$}} \\ \hline
+% \texttt{uniform} & \cellcolor{gray!25}$1.4401$ & $1.3897$ & $0.9023$ & \cellcolor{gray!25}$1.5316$ & $1.8743$ & $0.8848$ \\ \hline
+% \texttt{origin}  & \cellcolor{gray!25}$1.3683$ & $1.3446$ & $0.8422$ & \cellcolor{gray!25}$1.4552$ & $1.7856$ & $0.8258$ \\ \hline
+% \end{tabular}\end{table}
+
+% \begin{table}[H]\centering
+% \caption{Weekday. Test $=$ first 25\%.}
+% \setlength{\tabcolsep}{4pt}
+% \begin{tabular}{|l|r|r|r|r|r|r|}
+% \hline
+% mode & \cellcolor{gray!25}\makecell{train\\mean} & \makecell{train\\median} & \makecell{train\\dev}
+%  & \cellcolor{gray!25}\makecell{test\\mean} & \makecell{test\\median} & \makecell{test\\dev} \\
+% \hline
+% \multicolumn{7}{|l|}{\textit{Single-phase, $\alpha=0.0508$}} \\ \hline
+% \texttt{uniform} & \cellcolor{gray!25}$1.4760$ & $1.5008$ & $0.8977$ & \cellcolor{gray!25}$1.4268$ & $1.3960$ & $0.9013$ \\ \hline
+% \texttt{origin}  & \cellcolor{gray!25}$1.4093$ & $1.4542$ & $0.8434$ & \cellcolor{gray!25}$1.3622$ & $1.3536$ & $0.8470$ \\ \hline
+% \multicolumn{7}{|l|}{\textit{Two-phase, $\beta=0.102$, $\rho=0.101$}} \\ \hline
+% \texttt{uniform} & \cellcolor{gray!25}$1.4753$ & $1.5003$ & $0.8977$ & \cellcolor{gray!25}$1.4260$ & $1.3956$ & $0.9013$ \\ \hline
+% \texttt{origin}  & \cellcolor{gray!25}$1.4017$ & $1.4485$ & $0.8378$ & \cellcolor{gray!25}$1.3549$ & $1.3476$ & $0.8415$ \\ \hline
+% \end{tabular}\end{table}
+
+% \begin{table}[H]\centering
+% \caption{Weekday. Test $=$ second 25\%.}
+% \setlength{\tabcolsep}{4pt}
+% \begin{tabular}{|l|r|r|r|r|r|r|}
+% \hline
+% mode & \cellcolor{gray!25}\makecell{train\\mean} & \makecell{train\\median} & \makecell{train\\dev}
+%  & \cellcolor{gray!25}\makecell{test\\mean} & \makecell{test\\median} & \makecell{test\\dev} \\
+% \hline
+% \multicolumn{7}{|l|}{\textit{Single-phase, $\alpha=0.0508$}} \\ \hline
+% \texttt{uniform} & \cellcolor{gray!25}$1.4640$ & $1.4792$ & $0.8926$ & \cellcolor{gray!25}$1.4628$ & $1.4560$ & $0.9174$ \\ \hline
+% \texttt{origin}  & \cellcolor{gray!25}$1.3979$ & $1.4319$ & $0.8386$ & \cellcolor{gray!25}$1.3965$ & $1.4088$ & $0.8622$ \\ \hline
+% \multicolumn{7}{|l|}{\textit{Two-phase, $\beta=0.102$, $\rho=0.101$}} \\ \hline
+% \texttt{uniform} & \cellcolor{gray!25}$1.4632$ & $1.4787$ & $0.8926$ & \cellcolor{gray!25}$1.4620$ & $1.4555$ & $0.9173$ \\ \hline
+% \texttt{origin}  & \cellcolor{gray!25}$1.3904$ & $1.4264$ & $0.8330$ & \cellcolor{gray!25}$1.3889$ & $1.4018$ & $0.8566$ \\ \hline
+% \end{tabular}\end{table}
+
+% \begin{table}[H]\centering
+% \caption{Weekday. Test $=$ third 25\%.}
+% \setlength{\tabcolsep}{4pt}
+% \begin{tabular}{|l|r|r|r|r|r|r|}
+% \hline
+% mode & \cellcolor{gray!25}\makecell{train\\mean} & \makecell{train\\median} & \makecell{train\\dev}
+%  & \cellcolor{gray!25}\makecell{test\\mean} & \makecell{test\\median} & \makecell{test\\dev} \\
+% \hline
+% \multicolumn{7}{|l|}{\textit{Single-phase, $\alpha=0.0508$}} \\ \hline
+% \texttt{uniform} & \cellcolor{gray!25}$1.4740$ & $1.5798$ & $0.9023$ & \cellcolor{gray!25}$1.4329$ & $1.3112$ & $0.8877$ \\ \hline
+% \texttt{origin}  & \cellcolor{gray!25}$1.4072$ & $1.5242$ & $0.8480$ & \cellcolor{gray!25}$1.3683$ & $1.2663$ & $0.8335$ \\ \hline
+% \multicolumn{7}{|l|}{\textit{Two-phase, $\beta=0.102$, $\rho=0.101$}} \\ \hline
+% \texttt{uniform} & \cellcolor{gray!25}$1.4732$ & $1.5794$ & $0.9023$ & \cellcolor{gray!25}$1.4322$ & $1.3107$ & $0.8877$ \\ \hline
+% \texttt{origin}  & \cellcolor{gray!25}$1.3997$ & $1.5183$ & $0.8424$ & \cellcolor{gray!25}$1.3610$ & $1.2618$ & $0.8279$ \\ \hline
+% \end{tabular}\end{table}
+
+% ~\newpage
+% ~\newpage
+% ~\newpage
+
+
+% \begin{table*}[t]
+% \centering
+% \caption{Single-phase \texttt{sp.+la.} trained per day-category
+% ($\alpha=0.0508$; test $=$ second 25\% of the category). \texttt{fcast} $=$
+% 7-day-ahead forecast (weekend covers 690 of 777 test slots; the earliest 87
+% lack origins 7 days earlier).}
+% \setlength{\tabcolsep}{3pt}
+% \begin{tabular}{|>{\columncolor{gray!20}}l|r|>{\columncolor{gray!20}}r|r|>{\columncolor{gray!20}}r|r|>{\columncolor{gray!20}}r|r|>{\columncolor{gray!20}}r|r|>{\columncolor{gray!20}}r|r|}
+% \hline
+% category & $\alpha_s$ & $\alpha_l$
+%  & \makecell{train\\mean} & \makecell{train\\median} & \makecell{train\\dev}
+%  & \makecell{test\\mean} & \makecell{test\\median} & \makecell{test\\dev}
+%  & \makecell{fcast\\mean} & \makecell{fcast\\median} & \makecell{fcast\\dev} \\
+% \hline
+% weekend+holiday & $+0.844$ & $+0.290$ & $0.7050$ & $0.6937$ & $0.3871$ & $0.6752$ & $0.6138$ & $0.3843$ & $0.6827$ & $0.5583$ & $0.4093$ \\
+% \hline
+% weekday         & $+2.523$ & $+0.576$ & $1.3568$ & $1.3812$ & $0.7648$ & $1.3568$ & $1.3561$ & $0.7860$ & $1.3893$ & $1.3847$ & $0.8113$ \\
+% \hline
+% \end{tabular}
+% \end{table*}
+
+% \begin{table*}[t]
+% \centering
+% \caption{Two-phase up/down \texttt{sp.+la.} trained per day-category
+% ($\beta=0.102$, $\rho=0.101$; test $=$ second 25\% of the category).
+% \texttt{fcast} $=$ 7-day-ahead forecast (weekend covers 690 of 777 test
+% slots; the earliest 87 lack origins 7 days earlier).}
+% \setlength{\tabcolsep}{2pt}
+% \begin{tabular}{|>{\columncolor{gray!20}}l|r|>{\columncolor{gray!20}}r|r|>{\columncolor{gray!20}}r|r|>{\columncolor{gray!20}}r|r|>{\columncolor{gray!20}}r|r|>{\columncolor{gray!20}}r|r|>{\columncolor{gray!20}}r|r|}
+% \hline
+% category & $\alpha_s^{\uparrow}$ & $\alpha_s^{\downarrow}$ & $\alpha_l^{\uparrow}$ & $\alpha_l^{\downarrow}$
+%  & \makecell{train\\mean} & \makecell{train\\median} & \makecell{train\\dev}
+%  & \makecell{test\\mean} & \makecell{test\\median} & \makecell{test\\dev}
+%  & \makecell{fcast\\mean} & \makecell{fcast\\median} & \makecell{fcast\\dev} \\
+% \hline
+% weekend+holiday & $+3.359$ & $-1.158$ & $+0.815$ & $-0.281$ & $0.6998$ & $0.6890$ & $0.3842$ & $0.6702$ & $0.6103$ & $0.3814$ & $0.6793$ & $0.5563$ & $0.4075$ \\
+% \hline
+% weekday         &  TBD &  TBD &  TBD &  TBD &  TBD &  TBD &  TBD &  TBD &  TBD &  TBD &  TBD &  TBD &  TBD \\
+% \hline
+% \end{tabular}
+% \end{table*}
+
+% ~\newpage
+% ~\newpage
+% ~\newpage
+
+% \begin{table*}[t]
+% \centering
+% \caption{Single-phase \texttt{sp.+la.} trained per day of week
+% ($\alpha=0.0508$). Test $=$ that weekday in the second 7-day window;
+% train $=$ its other occurrences; fcast $=$ 7-day-ahead forecast
+% (same weekday's week-1 origins fed to predict the test day).}
+% \setlength{\tabcolsep}{4pt}
+% \begin{tabular}{|>{\columncolor{gray!20}}l|r|>{\columncolor{gray!20}}r|r|>{\columncolor{gray!20}}r|r|>{\columncolor{gray!20}}r|r|>{\columncolor{gray!20}}r|r|>{\columncolor{gray!20}}r|r|}
+% \hline
+% day & $\alpha_s$ & $\alpha_l$
+%  & \makecell{train\\mean} & \makecell{train\\median} & \makecell{train\\dev}
+%  & \makecell{test\\mean} & \makecell{test\\median} & \makecell{test\\dev}
+%  & \makecell{fcast\\mean} & \makecell{fcast\\median} & \makecell{fcast\\dev} \\
+% \hline
+% Monday    & $+1.673$ & $+0.410$ & $1.1137$ & $0.9161$ & $0.7723$ & $1.3646$ & $1.5670$ & $0.8323$ & $1.4251$ & $1.6162$ & $0.8836$ \\
+% \hline
+% Tuesday   & $+2.363$ & $+0.537$ & $1.3223$ & $1.2622$ & $0.7764$ & $1.3880$ & $1.6137$ & $0.8031$ & $1.4189$ & $1.6514$ & $0.8256$ \\
+% \hline
+% Wednesday & $+2.526$ & $+0.580$ & $1.3578$ & $1.3803$ & $0.7601$ & $1.3942$ & $1.6047$ & $0.7855$ & $1.4265$ & $1.6373$ & $0.8096$ \\
+% \hline
+% Thursday  & $+2.558$ & $+0.580$ & $1.3624$ & $1.3840$ & $0.7699$ & $1.4099$ & $1.6065$ & $0.7820$ & $1.4410$ & $1.6480$ & $0.8049$ \\
+% \hline
+% Friday    & $+2.557$ & $+0.598$ & $1.3366$ & $1.3031$ & $0.7366$ & $1.3891$ & $1.5171$ & $0.7715$ & $1.4200$ & $1.5526$ & $0.7943$ \\
+% \hline
+% Saturday  & $+1.158$ & $+0.369$ & $0.8133$ & $0.8084$ & $0.4186$ & $0.8604$ & $0.9102$ & $0.4382$ & $0.8763$ & $0.9253$ & $0.4497$ \\
+% \hline
+% Sunday    & $+0.607$ & $+0.239$ & $0.5825$ & $0.6034$ & $0.3042$ & $0.5730$ & $0.4974$ & $0.3113$ & $0.5819$ & $0.5058$ & $0.3180$ \\
+% \hline
+% \end{tabular}
+% \end{table*}
+
+% \begin{table*}[t]
+% \centering
+% \caption{Two-phase up/down \texttt{sp.+la.} trained per day of week
+% ($\beta=0.102$, $\rho=0.101$; test $=$ that weekday in the second 7-day
+% window, train $=$ its other occurrences). \texttt{fcast} $=$ 7-day-ahead
+% forecast (that weekday's week-1 origins fed to predict the test day).}
+% \setlength{\tabcolsep}{2pt}
+% \begin{tabular}{|>{\columncolor{gray!20}}l|r|>{\columncolor{gray!20}}r|r|>{\columncolor{gray!20}}r|r|>{\columncolor{gray!20}}r|r|>{\columncolor{gray!20}}r|r|>{\columncolor{gray!20}}r|r|>{\columncolor{gray!20}}r|r|}
+% \hline
+% day & $\alpha_s^{\uparrow}$ & $\alpha_s^{\downarrow}$ & $\alpha_l^{\uparrow}$ & $\alpha_l^{\downarrow}$
+%  & \makecell{train\\mean} & \makecell{train\\median} & \makecell{train\\dev}
+%  & \makecell{test\\mean} & \makecell{test\\median} & \makecell{test\\dev}
+%  & \makecell{fcast\\mean} & \makecell{fcast\\median} & \makecell{fcast\\dev} \\
+% \hline
+% Monday    & $+4.415$ & $-0.714$ & $+1.111$ & $-0.213$ & $1.1037$ & $0.9124$ & $0.7719$ & $1.3535$ & $1.5608$ & $0.8316$ & $1.4205$ & $1.6155$ & $0.8883$ \\
+% \hline
+% Tuesday   & $+5.014$ & $+0.101$ & $+1.376$ & $-0.094$ & $1.3126$ & $1.2599$ & $0.7843$ & $1.3783$ & $1.6135$ & $0.8113$ & $1.4132$ & $1.6558$ & $0.8367$ \\
+% \hline
+% Wednesday & $+5.189$ & $+0.364$ & $+1.479$ & $-0.057$ & $1.3485$ & $1.3781$ & $0.7687$ & $1.3848$ & $1.6031$ & $0.7941$ & $1.4213$ & $1.6403$ & $0.8213$ \\
+% \hline
+% Thursday  & $+5.192$ & $+0.414$ & $+1.482$ & $-0.054$ & $1.3531$ & $1.3808$ & $0.7786$ & $1.4008$ & $1.6057$ & $0.7905$ & $1.4359$ & $1.6516$ & $0.8164$ \\
+% \hline
+% Friday    & $+5.471$ & $+0.388$ & $+1.533$ & $-0.021$ & $1.3274$ & $1.3004$ & $0.7439$ & $1.3799$ & $1.5164$ & $0.7788$ & $1.4149$ & $1.5567$ & $0.8045$ \\
+% \hline
+% Saturday  & $+4.024$ & $-0.906$ & $+1.022$ & $-0.243$ & $0.8070$ & $0.8045$ & $0.4163$ & $0.8536$ & $0.9055$ & $0.4359$ & $0.8718$ & $0.9216$ & $0.4489$ \\
+% \hline
+% Sunday    & $+2.883$ & $-1.219$ & $+0.643$ & $-0.260$ & $0.5786$ & $0.5995$ & $0.3020$ & $0.5693$ & $0.4940$ & $0.3088$ & $0.5794$ & $0.5039$ & $0.3164$ \\
+% \hline
+% \end{tabular}
+% \end{table*}
+
+
+
+
+% ~\newpage
+% ~\newpage
+% ~\newpage
+% \begin{table*}[t]
+% \centering
+% \caption{Origin-informed within-week forecast: trained on the first
+% $23$ days, evaluated on the last $7$.}
+% \label{tab:origin-forecast}
+% %\scriptsize
+% \setlength{\tabcolsep}{12pt}
+% \begin{tabular}{lrrrrrrr}
+% \toprule
+% mode
+%   & $\alpha_s$ & $\alpha_l$ & $\alpha_{\text{ang}}$
+%   & \makecell{train\\mean} & \makecell{train\\median}
+%   & \makecell{test\\mean}  & \makecell{test\\median} \\
+% \midrule
+% \multicolumn{8}{l}{\textit{Single Phase}} \\ %, $\alpha = 0.0508$}} \\
+% \midrule
+% \texttt{uniform}: $E = 1/N$           &     ---  &     ---  &     ---  & $1.1739$ & $0.9544$ & $1.2706$ & $1.0545$ \\
+
+% \texttt{origin}:  $\tilde E_{b-7d}$            &     ---  &     ---  &     ---  & $1.1266$ & $0.9311$ & $1.2178$ & $1.0277$ \\
+
+% \texttt{speed}                 & $+2.242$ &     ---  &     ---  & $1.1096$ & $0.9179$ & $1.1963$ & $1.0109$ \\
+
+% \texttt{lane}                 &     ---  & $+0.673$ &     ---  & $1.1136$ & $0.9209$ & $1.2018$ & $1.0153$ \\
+
+% \texttt{speed + lane}           & $+1.751$ & $+0.436$ &     ---  & $1.1045$ & $0.9138$ & $1.1903$ & $1.0057$ \\
+
+% \texttt{lane + angle}          &     ---  & $+1.790$ & $-2.507$ & $1.1092$ & $0.9496$ & $1.1899$ & $1.0383$ \\
+
+% \texttt{speed + angle}          & $+4.890$ &     ---  & $-2.198$ & $1.1058$ & $0.9454$ & $1.1861$ & $1.0345$ \\
+
+% \texttt{speed + lane + angle}    & $+1.860$ & $+0.438$ & $+0.105$ & $1.1042$ & $0.9132$ & $1.1897$ & $1.0048$ \\
+% \midrule
+% \multicolumn{8}{l}{\textit{Two Phase}} \\ %, $\beta = 0.102$, $\rho = 0.101$}} \\
+% \midrule
+% \texttt{uniform}:  $E = 1/N$    &     ---  &     ---  &     ---  & $1.1732$ & $0.9540$ & $1.2698$ & $1.0540$ \\
+
+% \texttt{origin}: $\tilde E_{b-7d}$   &     ---  &     ---  &     ---  & $1.1211$ & $0.9278$ & $1.2117$ & $1.0243$ \\
+
+% \texttt{speed}                 & $+2.201$ &     ---  &     ---  & $1.1049$ & $0.9162$ & $1.1915$ & $1.0084$ \\
+
+% \texttt{lane}                 &     ---  & $+0.659$ &     ---  & $1.1091$ & $0.9187$ & $1.1969$ & $1.0125$ \\
+
+% \texttt{speed + lane}           & $+1.720$ & $+0.416$ &     ---  & $1.1006$ & $0.9117$ & $1.1864$ & $1.0039$ \\
+
+% \texttt{lane + angle}          &     ---  & $+1.654$ & $-2.216$ & $1.1026$ & $0.9427$ & $1.1831$ & $1.0315$ \\
+
+% \texttt{speed + angle}          & $+4.579$ &     ---  & $-1.949$ & $1.0979$ & $0.9376$ & $1.1781$ & $1.0259$ \\
+
+% \rowcolor{gray!15} 
+% \texttt{speed + lane + angle}    & $+1.781$ & $+0.417$ & $+0.057$ & $1.1006$ &   TBD    & $1.1862$ &   TBD    \\
+% \bottomrule
+% \end{tabular}
+% \end{table*}
+
+
+\begin{table}[H]
+\centering
+\caption{Week-to-week Overall MRE of the diffused popularity over the full
+corpus (all $2016$ bins of the week; next week as truth, previous week as
+prediction). Standard deviation over bins in parentheses.\hamid{week to week diffused data comparison.}}
+\label{tab:week-to-week-noise-floor}
+\setlength{\tabcolsep}{8pt}
+\begin{tabular}{lc}
+\toprule
+comparison & \shortstack{OV. MRE\\(st.\ dev)} \\
+\midrule
+Week 2 vs Week 1 & $0.6722$ ($0.3867$) \\
+\rowcolor{gray!15}Week 3 vs Week 2 & $0.6528$ ($0.3393$) \\
+Week 4 vs Week 3 & $0.6558$ ($0.3331$) \\
+\bottomrule
+\end{tabular}
+\end{table}
 \end{document}

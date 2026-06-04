@@ -73,3 +73,6 @@ results/loo_calibration/
 results/*_REPORT.md
 results/alpha_experiment.md
 results/v1_experiment.md
+
+# Quarantined non-paper files (preserved locally, not pushed)
+_attic_nonpaper/

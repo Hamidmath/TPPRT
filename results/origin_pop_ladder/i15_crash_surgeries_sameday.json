@@ -1,0 +1,68 @@
+{
+  "event": "I-15 Draper crash 2018-09-20, single-link closure (59076), prev-week prior",
+  "window": [
+    "2018-09-20 07:00:00",
+    "2018-09-20 11:55:00"
+  ],
+  "n_slots": 60,
+  "closed_links": [
+    "59076"
+  ],
+  "n_closed": 1,
+  "rows": [
+    {
+      "box_mean": 1.7829977724357085,
+      "box_dev": 0.790724756598169,
+      "whole_mean": 1.704801485624143,
+      "whole_dev": 0.6995359014545739,
+      "model": "sp",
+      "surgery": "none",
+      "prior": "same-day"
+    },
+    {
+      "box_mean": 1.7553037485334324,
+      "box_dev": 0.7730075787729643,
+      "whole_mean": 1.706703764364471,
+      "whole_dev": 0.7007181008362275,
+      "model": "sp",
+      "surgery": "surgery1",
+      "prior": "same-day"
+    },
+    {
+      "box_mean": 1.7457688119696855,
+      "box_dev": 0.7692120570336493,
+      "whole_mean": 1.7067595488124028,
+      "whole_dev": 0.7007458094802568,
+      "model": "sp",
+      "surgery": "surgery2",
+      "prior": "same-day"
+    },
+    {
+      "box_mean": 1.7838310552670191,
+      "box_dev": 0.7870560615056961,
+      "whole_mean": 1.6926571906172503,
+      "whole_dev": 0.6950277040173879,
+      "model": "tp",
+      "surgery": "none",
+      "prior": "same-day"
+    },
+    {
+      "box_mean": 1.7649697142875238,
+      "box_dev": 0.7756542324051107,
+      "whole_mean": 1.6948351189621633,
+      "whole_dev": 0.6963855987667449,
+      "model": "tp",
+      "surgery": "surgery1",
+      "prior": "same-day"
+    },
+    {
+      "box_mean": 1.7553741614597753,
+      "box_dev": 0.7718583251160186,
+      "whole_mean": 1.6948899502635504,
+      "whole_dev": 0.6964126089705588,
+      "model": "tp",
+      "surgery": "surgery2",
+      "prior": "same-day"
+    }
+  ]
+}
