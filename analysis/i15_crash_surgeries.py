@@ -7,12 +7,11 @@ Window: 2018-09-20 07:00..11:55 (60 slots). Prior = previous-week origins
 E_{b-7d} (same hours Thu 2018-09-13). Target = crash-day popularity.
 
 Conditions:
-  none     : full graph, plain.
-  surgery1 : hard-remove closed links; zero+renorm prior AND popularity
-             over all open links.
-  surgery2 : hard-remove closed links; zero+renorm prior over open, but
-             redistribute the closed links' popularity onto the eval box
-             (proportional to existing box popularity).
+  none     : full graph, plain (closed link only zeroed for scoring).
+  surgery2 : remove the closed links from the network and rebuild P; move the
+             closed links' PRIOR mass onto the eval box (proportional to the
+             box prior); for the popularity target, drop the closed links and
+             renormalize over the whole network.
 
 Models: single-phase and two-phase up/down, speed+lane, no angle.
 Scored (Overall MRE mean/dev over 60 slots) on the eval box and whole
@@ -190,16 +189,18 @@ def main():
     def mre(t,p,mask): return float(np.mean(np.abs(t[mask]-p[mask])/(t[mask]+EPS)))
 
     def run(model, cond):
-        surg = cond in ("surgery1","surgery2")
+        surg = cond in ("surgery2","surgery_box")
         pb,pw=[],[]
         for k in range(len(slots20)):
             E=E_prev[k]
-            prior = E if cond=="none" else zoc(E)
+            # surgery: move the closed links' PRIOR mass onto the eval box (proportional)
+            prior = redist_to_box(E) if surg else E
             if model=="sp":
                 v = sp_iter(P_sp_s if surg else P_sp_o, prior)
             else:
                 v = tp_iter(P_up_s,P_dn_s,prior,dm_s) if surg else tp_iter(P_up_o,P_dn_o,prior,dm_o)
-            tgt = redist_to_box(F[k]) if cond=="surgery2" else zoc(F[k])
+            # popularity target: surgery_box -> redistribute onto box; else drop+renorm whole
+            tgt = redist_to_box(F[k]) if cond=="surgery_box" else zoc(F[k])
             pred = zoc(v)
             pb.append(mre(tgt,pred,box_idx)); pw.append(mre(tgt,pred,whole_idx))
         pb=np.array(pb); pw=np.array(pw)
@@ -208,7 +209,7 @@ def main():
 
     rows=[]
     for model in ["sp","tp"]:
-        for cond in ["none","surgery1","surgery2"]:
+        for cond in ["none","surgery2","surgery_box"]:
             r=run(model,cond); r.update(model=model,surgery=cond,prior=("same-day" if SAMEDAY else "prev-week"))
             rows.append(r)
             print("  %-3s %-9s | box mean=%.4f dev=%.4f | whole mean=%.4f dev=%.4f"

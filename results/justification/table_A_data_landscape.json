@@ -1,0 +1,26 @@
+{
+  "N_links": 99716,
+  "T_bins": 8640,
+  "n_full_4w_bins": 8064,
+  "per_bin_zero_fraction": {
+    "min": 0.972231136427454,
+    "median": 0.9909041678366561,
+    "max": 0.9993180632997714,
+    "mean": 0.988781554794187
+  },
+  "zeros_in_4w_distribution_per_cell": {
+    "0": 304983,
+    "1": 499625,
+    "2": 1153583,
+    "3": 3994889,
+    "4": 195074376
+  },
+  "band_counts": {
+    "EMPTY": 195074376,
+    "SUBNOISE": 422590,
+    "MIXED": 4284846,
+    "SIGNAL": 1245644
+  },
+  "median_raw_std_active": 0.000264572212472558,
+  "noise_floor_median": 0.0002646
+}

@@ -108,22 +108,24 @@ We describe how to train an urban traffic model on a full metropolitan road netw
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Introduction}
-A full metro-scale traffic model, we posit, should contain the following components.  
+In this paper we design a full metro-scale traffic model with the following objectives:  
 (1)  It should consider traffic on each link of a road network.  Otherwise, it is not compatible with low-level route planning, actual map-matched GPS-traces.  
 (2)  It should be temporal, with a small resolution like 5 minutes, and spanning a week.  Traffic patterns are variable at this resolution level, due to commute and meal regularity.  The week long models are necessary for regular changes in behavior over that period.  
-(3)  It should be able to efficiently produce actual road-network routes mirroring GPS traces, starting in each time window.  These are necessary for producing realistic routes that can adapt to the environment for planning and forecasting.  The efficiency is necessary so this can be deployed in other AI infrastructure for generative modeling.  
+(3)  It should be able to \emph{efficiently} produce actual road-network routes mirroring GPS traces as well as global traffic population distributions directly, starting in each time window.  These are necessary for producing realistic routes that can adapt to the environment for planning and forecasting.  The efficiency is necessary so this can be deployed in other AI infrastructure for generative modeling.  
 (4)  Finally, it should learn from and be trained on actual data so it can represent the true human behaviors and adapt if new data arises.  
 
-In this paper we demonstrate how to build such a system on the greater Salt Lake City metropolitan area.  This represents a cohesive and connected ecosystem with about 100,000 links.  We train this model on GPS tracing representing about 5\% of the traffic for the area for a 30 day period (about 2.5 million routes).  The scale of the data is large, but manageable by today's standards -- the real challenges is the sparsity.  After filtering and cleaning, only about 180 million GPS points remain; but at a 5-minute resolution with 2,016 time periods over a week, there are over 800 million links$\times$time-windows to model.  Even if we had a longer observation period or a higher percentage of routes, a similar challenge would remain since many routes are concentrated on busy thoroughfares and are peak times of the day.  The tail of density is extremely long. 
+We build such a system on the greater Salt Lake City metropolitan area.  This represents a cohesive and connected ecosystem with about 100,000 links.  We train this model on GPS tracing representing about 5\% of the traffic for the area for a 30 day period (about 2.5 million routes).  The scale of the data is large, but manageable by today's standards -- the real challenges is the sparsity.  After filtering and cleaning, only about 180 million GPS points remain; but at a 5-minute resolution with 2,016 time periods over a week, there are over 800 million links$\times$time-windows to model.  Even if we had a longer observation period or a higher percentage of routes, a similar challenge would remain since many routes are concentrated on busy thoroughfares and are peak times of the day.  The tail of density is extremely long. 
 
-We manage to effectively build a model satisfying this desiderata through several innovations.  Our baseline is a PageRank model that treats directed network links as graph vertices, and intersections model outgoing edges.  We then categorize links by speed and number of lanes, and use data to learn transition probabilities between edges that favor transitions to or from higher throughput roads.   However, routes typically move towards thoroughfares as they depart, and then move away from them as they reach their destination; so we design a two-phase PageRank that has separate transition probabilities as it gears up, and then speeds down.  Finally, when a route ends, PageRank ``teleports" to a random node to start the next walk; however, this does not reflect the pattern of route origins.  So we use our observations of route starting points to also inform this teleportation probability, akin to trust-rank models~\cite{}.  
-We demonstrate that each of these steps is necessary to build an effective learned model.  
+We manage to effectively build a model satisfying this desiderata through several innovations.  Our baseline is a PageRank model~\cite{page1999pagerank,gleich2015pagerank} that treats directed network links as graph vertices, and intersections model outgoing edges.  We then categorize links by speed and number of lanes, and use data to learn transition probabilities between edges that favor transitions to or from higher throughput roads.   However, routes typically move towards thoroughfares as they depart, and then move away from them as they reach their destination; so we design a two-phase PageRank that has separate transition probabilities as it gears up, and then speeds down.  Finally, when a route ends, PageRank ``teleports" to a random node to start the next walk; however, this does not reflect the pattern of route origins.  So we use our observations of route starting points to also inform this teleportation probability, akin to trust-rank or personalized models~\cite{gyongyi2004combating,haveliwala2002topic}.  
+We demonstrate that each of these steps is important towards building an effective learned model.  
 
 Another challenge is in a trustworthy evaluation.  Due to the data sparsity, even without a cross-validation split, it is not enough to directly predict the link density accuracy.  Across the 4 full weeks, only 3\% of links$\times$time have at least one observation in a week, and only 1\% have at least one observation in more than one week.  
 So we disperse the sparse observations we have using graph diffusion~\cite{shuman2013gsp}.  We show how to apply this in a controlled way so that for each full week of observation, each link$\times$time has non-zero measure, and the average relative change in value is less than the median number of difference in observations among the links$\times$time which have observations in more than two weeks.  That is, this diffusion makes the observations dense in a natural way that does not disrupt the data below the noise floor.  
 From here, we can evaluate the model by training on one week, and measuring on the next.  
 
-Ultimately, we demonstrate an efficient, fine-grain, and full model on a metro scale data set.  It produces natural temporally encoded routes, and its error is below the week-to-week variability of the diffused observations.  Moreover, we demonstrate on two scenarios (a large sporting event, and an accident-induced lane closure) how we can use it to effectively forecast heavy traffic and investigate what-if scenarios.  
+Ultimately, we demonstrate an efficient, fine-grain, and full model at metro scale.  It produces natural temporally encoded routes, and its error is on par with the week-to-week variability of the diffused observations.  
+Importantly, because it is a PageRank model, we can use power iterations to compute the limiting global distribution for any time window, and are not reliant on noisy 1-by-1 forward simulations.  
+Moreover, we demonstrate on three scenarios (a large sporting event, a street festival, and an accident-induced lane closure) how we can use it to effectively forecast heavy traffic and investigate what-if scenarios.  PageRank's limiting traffic distribution can quickly adapt to these scenarios.  
 
 
 
@@ -181,12 +183,11 @@ The closest comparable effort in scope is
 MATSim~\cite{horni2016matsim, balmer2006matsim}, a long-running
 agent-based simulator that, given a synthetic population,
 schedules, and a network, performs \emph{forward} simulation of
-per-link traffic at every time of day. Our problem is the
+per-link traffic at every time of day -- or similarly for more local models like SUMO~\cite{SUMO} or DTA~\cite{wang2018dynamic}. Our problem is the
 \emph{inverse}: given observed probe trajectories, infer a
 per-link popularity field and validate it against held-out
-weeks. The two efforts complement rather than compete; we use
-the MATSim network model of Salt Lake City as our graph, but
-the calibration-from-data step is outside MATSim's scope.
+weeks. The two efforts complement each other; we use
+the MATSim network model of Salt Lake City as our graph, but we can directly determine the limiting traffic distribution.  
 
 %\paragraph{Origin-destination estimation: a coarser unit of modeling.}
 A long line of transportation work estimates city-wide
@@ -214,7 +215,7 @@ It has been used for structural centrality ranking of links in the network~\cite
 % teleportation parameters and is never compared against
 % observed link occupancy.
 It has been used to model congestion, for instance by Wang \emph{et.al.}~\cite{wang2017pagerank} on a coarse 4,000 cell grid of Beijing.  
-These methods predominantly use PageRank for analysis, and may even evaluate it against some observations, but it is not trained on full traffic observations, and not at the level of link or time granularity that we build.  Our higher-resolution model, fit to real observations, will provide a better setting with which to perform these sorts of analysis.  
+These methods predominantly use PageRank for analysis, and may even evaluate it against some observations, but it is not trained on full traffic observations, and not at the level of link or time granularity that we build.  Our higher-resolution model, fit to real observations, will provide a better setting on which to perform these sorts of analysis.  
 
 %\emph{PageRank scores as predictors of regional
 %congestion.}~\cite{wang2017pagerank} partition Beijing into a
@@ -250,12 +251,11 @@ These methods predominantly use PageRank for analysis, and may even evaluate it 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Probe Corpus}
+%\subsection{Probe Corpus}
 \label{sec:dataset-corpus}
 
-Our raw input is a corpus of sparse GPS trajectory records collected by Intrix  \jeff{get details from Cathy}
-in the Salt Lake City metropolitan area between
-August~31,~2018 and September~30,~2018, a continuous $30$-day
+Our raw input is a corpus of sparse GPS trajectory records collected by INRIX, a commercial provider of probe-based vehicle movement and traffic data. 
+It covers the Salt Lake City metropolitan area for September 2018, a continuous $30$-day
 observation window. 
 The data are distributed as a set of data rows, with ones belonging to the same device are interleaved chronologically.  
 Each row corresponds to a single GPS fix and contains
@@ -417,17 +417,15 @@ emitting GPS location. The counting rule is:
           \big\{\,(b_j,\, \textsf{lid}_j,\, r) \;:\; j = 1, \ldots, M_r \,\big\}.
 \]
     If the same trip emits five GPS points that all map to the same
-        bin and the same link, that combination is counted exactly
+        bin and the same link, they are counted exactly
         once.
-  \item \textbf{Accumulation.} The population-matrix entry $C_{b, i}$
-        is then the number of distinct trips that contributed at
-        least one fix to bin $b$ on link $i$:
-        \begin{equation}
-        \label{eq:count-rule}
-          C_{b, i} \;=\; \big|\,\{\, r \;:\;
-                    \exists\, j \text{ with } b_j = b,\;
-                                       \textsf{lid}_j = i \,\}\,\big|.
-        \end{equation}
+  \item \textbf{Accumulation.} The population-matrix entry $C_{b, i}$ is then the number of distinct trips that contributed at least one location to bin $b$ on link $i$:
+    \begin{equation}
+    \label{eq:count-rule}
+        C_{b, i} \;=\; \big|\,\{\, r \;:\;
+        \exists\, j \text{ with } b_j = b,\;
+        \textsf{lid}_j = i \,\}\,\big|.
+    \end{equation}
 \end{enumerate}
 
 The per-trip deduplication ensures that $C_{b, i}$ measures link
@@ -451,21 +449,20 @@ artifact to roughly $7$~MiB.
 %\subsection{\texorpdfstring{What $C$ does and does not measure}{What C does and does not measure}}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \paragraph{Limitations of $C$ from Bias and Sparsity.}
-The matrix $C$ summarizes how many trips, drawn from the
-$714{,}594$-trip corpus, traversed each road link in each
-five-minute window of the $30$-day observation period. It is a
-direct empirical proxy for link usage and will inform our model.  
+%The matrix $C$ summarizes how many trips, drawn from the $714{,}594$-trip corpus, traversed each road link in each five-minute window of the $30$-day observation period. 
+%It is a direct empirical proxy for link usage and will inform our model.  
 %feeds the prior $E_b$ used in the two-phase {PageRank} chain.
 
 Two limitations are worth stating up front. 
 First, the corpus is a biased sample of real traffic: it is drawn from a specific population
 of GPS-emitting devices and is not a uniform sample of all vehicles
-on the road. Links that systematically attract devices in the
+on the road.  In particular, it biases towards commercial vehicles, with $42\%$ of raw waypoints belonging to trucks.  
+Links that systematically attract devices in the
 sample (e.g.\ commercial freeway corridors) are over-represented
 relative to links that attract a different population
 (e.g.\ residential cul-de-sacs). The matrix should therefore be
 read as a \emph{prior} on link usage, not as ground-truth volume.
-We note that while our INTRIX sample has its biases, this is likely to be also be true, but with different bias, for other entities capably of collecting data: e.g., Uber drivers, Google Maps users, Amazon deliveries, Tesla cars.  
+We note that while our INRIX sample has its biases, this is likely to be also be true, but with different bias, for other entities capably of collecting data: e.g., Uber drivers, Google Maps users, Amazon deliveries, Tesla cars.  
 
 
 Second, even within the large corpus, sparsity is structural: at any
@@ -774,53 +771,6 @@ $0.70$ & $0.418$ & $1.145$ & $32.10\%$ & $0.376$ & $2.364$ & $37.83\%$ \\
 \end{table}
 
 
-\begin{table}[b]
-\centering
-\caption{Displacement of zero cells
-($n_{\textsf{zero}} = 1.95 \times 10^{8}$) in units of
-$\NFG = 2.65 \times 10^{-4}$.}
-\label{tab:gamma-zero-cells}
-\small
-\setlength{\tabcolsep}{6pt}
-\begin{tabular}{cccc}
-\toprule
-$\gamma$ & median & $95$th pct.\ & $>\!0.5$ \\
-\midrule
-$0.00$ & $0.0004$ & $0.0004$ & $0.00\%$ \\
-$0.05$ & $0.0004$ & $0.0004$ & $0.01\%$ \\
-$0.10$ & $0.0004$ & $0.0004$ & $0.03\%$ \\
-$0.12$ & $0.0004$ & $0.0004$ & $0.04\%$ \\
-$0.13$ & $0.0004$ & $0.0004$ & $0.04\%$ \\
-$0.14$ & $0.0004$ & $0.0004$ & $0.05\%$ \\
-$0.15$ & $0.0004$ & $0.0004$ & $0.05\%$ \\
-\rowcolor{gray!15} 
-$0.20$
-       & $0.0004$ & $0.0004$ & $0.08\%$ \\
-$0.25$ & $0.0004$ & $0.0004$ & $0.10\%$ \\
-$0.30$ & $0.0004$ & $0.0004$ & $0.13\%$ \\
-$0.40$ & $0.0004$ & $0.0004$ & $0.20\%$ \\
-$0.50$ & $0.0004$ & $0.0004$ & $0.28\%$ \\
-$0.70$ & $0.0003$ & $0.0004$ & $0.46\%$ \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-
-Table \ref{tab:gamma-zero-cells} shows similar statistics for the cells with initial counts of $0$. In this case it only makes sense to use the global noise floor $\NFG$.  
-The median
-and $95$th-percentile ratios are essentially constant at
-$\approx 4 \times 10^{-4}$ across all $\gamma$: at least $95\%$
-of zero cells never see diffusion mass, they only carry the
-Laplace floor $\alpha / N$. The fraction of zero cells exceeding
-the half-noise tolerance is $0.08\%$ at $\gamma = 0.20$
-($\sim 1.5 \times 10^{5}$ cells out of $1.95 \times 10^{8}$);
-these are the cells immediately adjacent to active links and
-they are the ones that get filled in. The takeaway is
-that the diffusion is bounded even on the cells where the
-per-cell criterion of \cref{tab:gamma-noise-floor} is undefined:
-it lifts a small adjacency-defined tail of zero cells into the
-noise band and leaves the rest at the Laplace floor.  
-
 
 
 
@@ -1018,7 +968,7 @@ For global analysis, we train parameters on the first 23 days of the dataset, ag
 \label{sec:pagerank}
 
 We now describe our PageRank model for representing traffic patterns on our metro-scale network.  
-Recall that PageRank~\cite{} was developed as a model of a random surfer on the internet; the resulting distribution of where the random surfer would visit in the limit formed the basis for Google's groundbreaking search engine.  In this way it models the outgoing links of a webpage as directed edges in a graph, with pages as $N$ nodes; these form the probability transition matrix $P \in \R^{N \times N}$.  The $i$th column $P_i \in \R^N$ is a probability distribution for node $i$ where $P_i[j]$ encodes the probability that a random walk at node $i$ will be in node $j$ in the next step. In basic PageRank, these probabilities are set uniformly among the outgoing hyperlinks of a webpage, and $P$ is very sparse.  
+Recall that PageRank~\cite{page1999pagerank,gleich2015pagerank} was developed as a model of a random surfer on the internet; the resulting distribution of where the random surfer would visit in the limit formed the basis for Google's groundbreaking search engine.  In this way it models the outgoing links of a webpage as directed edges in a graph, with pages as $N$ nodes; these form the probability transition matrix $P \in \R^{N \times N}$.  The $i$th column $P_i \in \R^N$ is a probability distribution for node $i$ where $P_i[j]$ encodes the probability that a random walk at node $i$ will be in node $j$ in the next step. In basic PageRank, these probabilities are set uniformly among the outgoing hyperlinks of a webpage, and $P$ is very sparse.  
 
 Just using $P$ does not define an ergodic Markov Chain, so a key innovation is having the random surfer \emph{teleport} to a random webpage with some probability $p$ (usually about $0.15$).  This makes the random walks follow a geometric distribution in length, with expected length $1/p$ (about $7$ steps on average).  It also makes the true transition probability dense, but still allowing efficient simulation of forward steps from initiate state $v_n$ as:
 \begin{equation}
@@ -1809,22 +1759,6 @@ The Overall MRE (Ov.MRE) is reported by considering $5$ minute time bins $b \in 
 % \end{table}
 
 
-Table \ref{tab:forecast-norm} shows the Overall MRE under various settings and baselines.  
-The top half shows the Single Phase PageRank model, and the bottom half shows the Two Phase PageRank Model.  
-The \texttt{uniform} row uses the uninformed teleportation process, where it starts a route at a uniform random link, each with probability $1/N$; it has no other tuning.  
-The \texttt{origin dist} row replaces this with the diffused route origin prior from 7 days prior $\tilde E_{b-7b}$ (or $\tilde E_b$ for the train and test variations).  This allows the model to adapt to the specific 5 minute time window $b$ with the week.  The remaining rows also use this prior $\tilde E_{b-7b}$ (or $\tilde E_b$), and also uses the training set $T_{23d}$ to tune the various $\alpha$ parameters.  
-While the last row \textt{speed + lane} runs both $\alpha$ parameters, the other rows only tune a subset of them, with the others set to $\alpha_? = 0$ so that modeling has no effect on $P$.  
-
-Note that even the \texttt{uniform} (which uses no information from the data other than the graph structure) has higher Overall MRE on test than train.  So while it is not surprising for test scores to be higher than training scores (due to perhaps slight overfitting on the training set) this difference reflects that the inherent harder nature of the last 7 days, in the evaluate split we chose.  
-
-Otherwise, we observe that from the uniform baseline, as we add enhancements (origin distribution $\tilde E_b$, training $\alpha$, two-phase), the Ov.MRE error decreases.  For each measurement variant, the (\colorbox{gray!15}{highlighted}) row which includes all of these enhancements has the lowest error.  As predicted the $\alpha^\uparrow$ values optimize to be positive for the up phase, and the $\alpha^\downarrow$ values optimize to negative for the down phase.  
-
-
-We remark that the decrease in the error may not seem significant; with relative error about $1$ after optimization.  We posit that this is sort of error range is expected and it would be surprising to improve upon this.  Recall how we set the global noise floor at $\NFG = 2.65 \times 10^{-4}$; since most entries of $\tilde F_b$; this would give a median $MRE_b$ of 1.0 \jeff{can we quantify this better by computing the average $\|\tilde F_b - \tilde F_{b - 7d}|/(\tilde F_b + \varepsilon)$?  }
-Also note that the standard deviation is relatively large (about $0.8$) and also decreases as we progress to more enhanced models.  
-Overall, this shows that our methods provide real improvement in its week-to-week modeling ability, which generating memoryless routes on the full metro-scale network.  
-
-
 
 
 \begin{table*}[t]
@@ -1858,59 +1792,42 @@ Overall, this shows that our methods provide real improvement in its week-to-wee
 
 
 
+Table \ref{tab:forecast-norm} shows the Overall MRE under various settings and baselines.  
+The top half shows the Single Phase PageRank model, and the bottom half shows the Two Phase PageRank Model.  
+The \texttt{uniform} row uses the uninformed teleportation process, where it starts a route at a uniform random link, each with probability $1/N$; it has no other tuning.  
+The \texttt{origin dist} row replaces this with the diffused route origin prior from 7 days prior $\tilde E_{b-7b}$ (or $\tilde E_b$ for the train and test variations).  This allows the model to adapt to the specific 5 minute time window $b$ with the week.  The remaining rows also use this prior $\tilde E_{b-7b}$ (or $\tilde E_b$), and also uses the training set $T_{23d}$ to tune the various $\alpha$ parameters.  
+While the last row \texttt{speed + lane} runs both $\alpha$ parameters, the other rows only tune a subset of them, with the others set to $\alpha_? = 0$ so that modeling has no effect on $P$.  
+
+Note that even the \texttt{uniform} (which uses no information from the data other than the graph structure) has higher Overall MRE on test than train.  So while it is not surprising for test scores to be higher than training scores (due to perhaps slight overfitting on the training set) this difference reflects that the inherent harder nature of the last 7 days, in the evaluate split we chose.  
+
+Otherwise, we observe that from the uniform baseline, as we add enhancements (origin distribution $\tilde E_b$, training $\alpha$, two-phase), the Ov.MRE error decreases.  For each measurement variant, the (\colorbox{gray!15}{highlighted}) row which includes all of these enhancements has the lowest error.  As predicted the $\alpha^\uparrow$ values optimize to be positive for the up phase, and the $\alpha^\downarrow$ values optimize to negative for the down phase.  
 
 
-% \begin{table*}[t]
+We remark that the decrease in the error may not seem significant; with relative error about $1$ after optimization.  We posit that this sort of error range is expected and it would be surprising to improve upon this.  If we similarly measure Ov.MRE of $\displaystyle\sum_{i\in [N]}\frac{|\tilde F_b[i] - \tilde F_{b - 7d}[i]|}{(\tilde F_b[i] + \varepsilon)}$ (that is, the diffused population from one week to the next) averaged over a full week, we obtain about $0.67$, which is on the same order of our error.  Moreover, if we use the non-diffused data $F_b$ vs. $F_{b-7d}$, then the Ov.MRE is around $9.7$, much less than our error.  Hence there is significant variation between weeks, and we achieve less than twice this on diffused data, and far less on raw data.  
+Also note that the standard deviation is relatively large (about $0.8$) and also decreases as we progress to more enhanced models.  
+Overall, this shows that our methods provide real improvement in its week-to-week modeling ability, which generating memoryless routes on the full metro-scale network.  
+
+
+
+
+
+% \begin{table}[H]
 % \centering
-% \caption{Single-phase origin-informed forecast ($\alpha = 0.0508$), trained on the
-% first 23 days, evaluated on the last 7. The \texttt{fcast} columns are the
-% 7-day-ahead forecast (each test slot fed the origins from 7 days
-% earlier).}
-% \label{tab:sp-forecast-norm}
-% \setlength{\tabcolsep}{5pt}
-% \begin{tabular}{lrrrrrrrr}
+% \caption{Week-to-week Overall MRE of the diffused popularity over the full
+% corpus (all $2016$ bins of the week; next week as truth, previous week as
+% prediction). Standard deviation over bins in parentheses.\hamid{TEMPORARY TABEL: week to week diffused data comparison. The comparison that you asked today on the diffused data without using models}}
+% \label{tab:week-to-week-noise-floor}
+% \setlength{\tabcolsep}{8pt}
+% \begin{tabular}{lc}
 % \toprule
-% mode & $\alpha_s$ & $\alpha_l$
-%   & \makecell{train\\mean} & \makecell{train\\dev}
-%   & \makecell{test\\mean}  & \makecell{test\\dev}
-%   & \makecell{fcast\\mean} & \makecell{fcast\\dev} \\
-% \cmidrule(lr){4-5}\cmidrule(lr){6-7}\cmidrule(lr){8-9}
-%   &          &          & \multicolumn{2}{c}{$(\tilde{E}_{b},\tilde{F}_{b})$} & \multicolumn{2}{c}{$(\tilde{E}_{b},\tilde{F}_{b})$} & \multicolumn{2}{c}{$(\tilde{E}_{b-7d},\tilde{F}_{b})$} \\
+% comparison & \shortstack{OV. MRE\\(st.\ dev)} \\
 % \midrule
-% \texttt{uniform:} $E = 1/N$  &   ---    &   ---    & $1.1739$ & $0.8309$ & $1.2706$ & $0.8625$ & $1.2706$ & $0.8625$ \\
-% \texttt{origin}    &   ---    &   ---    & $1.1266$ & $0.7818$ & $1.2178$ & $0.8117$ & $1.2401$ & $0.8310$ \\
-% \texttt{speed}       & $+2.242$ &   ---    & $1.1096$ & $0.7466$ & $1.1963$ & $0.7759$ & $1.2197$ & $0.7960$ \\
-% \texttt{lane}       &   ---    & $+0.673$ & $1.1136$ & $0.7586$ & $1.2018$ & $0.7884$ & $1.2252$ & $0.8086$ \\
-% \rowcolor{gray!15}\texttt{speed + lane} & $+1.751$ & $+0.436$ & $1.1045$ & $0.7383$ & $1.1903$ & $0.7675$ & $1.2141$ & $0.7879$ \\
+% Week 2 vs Week 1 & $0.6722$ ($0.3867$) \\
+% \rowcolor{gray!15}Week 3 vs Week 2 & $0.6528$ ($0.3393$) \\
+% Week 4 vs Week 3 & $0.6558$ ($0.3331$) \\
 % \bottomrule
 % \end{tabular}
-% \end{table*}
-
-% \begin{table*}[t]
-% \centering
-% \caption{Two-phase up/down origin-informed forecast ($\beta=0.102$, $\rho=0.101$), trained on
-% the first 23 days, evaluated on the last 7. The \texttt{fcast} columns are
-% the 7-day-ahead forecast (each test slot fed the origins from 7 days
-% earlier).}
-% \label{tab:tp-forecast-updown}
-% \setlength{\tabcolsep}{3.5pt}
-% \begin{tabular}{lrrrrrrrrrr}
-% \toprule
-% mode & $\alpha_s^{\uparrow}$ & $\alpha_s^{\downarrow}$ & $\alpha_l^{\uparrow}$ & $\alpha_l^{\downarrow}$
-%   & \makecell{train\\mean} & \makecell{train\\dev}
-%   & \makecell{test\\mean}  & \makecell{test\\dev}
-%   & \makecell{fcast\\mean} & \makecell{fcast\\dev} \\
-% \cmidrule(lr){6-7}\cmidrule(lr){8-9}\cmidrule(lr){10-11}
-%   &          &          &          &          & \multicolumn{2}{c}{$(\tilde{E}_{b},\tilde{F}_{b})$} & \multicolumn{2}{c}{$(\tilde{E}_{b},\tilde{F}_{b})$} & \multicolumn{2}{c}{$(\tilde{E}_{b-7d},\tilde{F}_{b})$} \\
-% \midrule
-% \texttt{uniform:} $E = 1/N$  &   ---    &   ---    &   ---    &   ---    & $1.1732$ & $0.8309$ & $1.2698$ & $0.8625$ & $1.2698$ & $0.8625$ \\
-% \texttt{origin}    &   ---    &   ---    &   ---    &   ---    & $1.1211$ & $0.7768$ & $1.2117$ & $0.8065$ & $1.2365$ & $0.8279$ \\
-% \texttt{speed}       & $+6.960$ & $-1.518$ &   ---    &   ---    & $1.0990$ & $0.7446$ & $1.1852$ & $0.7739$ & $1.2117$ & $0.7966$ \\
-% \texttt{lane}       &   ---    &   ---    & $+2.320$ & $-0.658$ & $1.1034$ & $0.7490$ & $1.1902$ & $0.7786$ & $1.2176$ & $0.8020$ \\
-% \rowcolor{gray!15}\texttt{speed + lane} & $+4.649$ & $-0.572$ & $+1.161$ & $-0.167$ & $1.0948$ & $0.7375$ & $1.1801$ & $0.7667$ & $1.2072$ & $0.7899$ \\
-% \bottomrule
-% \end{tabular}
-% \end{table*}
+% \end{table}
 
 
 
@@ -1927,20 +1844,27 @@ Overall, this shows that our methods provide real improvement in its week-to-wee
 \section{Event Modeling}
 \label{sec:event-modeling}
 
-We show how to apply this framework to model specific events that have predictable configuration changes, which allows for updated modeling.  
+We show how to apply this framework to events that have predictable configuration changes, which allows for updated modeling.  
 
-There are two direct ways we can leverage our model to provide what-if planning for different sorts of scenarios. 
+There are two direct ways we can leverage our model.   
 First, if there are road closures (either planned or unplanned), then we can perform a simple modification of the graph by removing those links.  
-Second, if there is a large event attracting many of additional people to a small area, then we can adapt the route origin distribution $\tilde E_b$ for the specified time windows $b$ for the event.  In practice for sporting events or festivals we can use prior events for these modified distribution estimates, but because we only have access to one month of data, we use the data from the $\tilde E_b$ data actual event.  To build a forecast, we train how to increase $\tilde E_b$ on half of the links, and measure generalization on the other half.  
+Second, if there is a large event attracting many of additional people to a small area, then we can adapt the route origin distribution $\tilde E_b$ for the specified time windows $b$ for the event.  In practice for sporting events or festivals we can use prior events for these modified distribution estimates, but because we only have access to one month of data, we use a training subset of the data from the $\tilde E_b$ data actual event.  
+%To build a forecast, we train how to increase $\tilde E_b$ on half of the links, and measure generalization on the other half.  
 In both cases, we do not need to retrain the $\alpha$ parameters, only to rerun the PageRank iteration \eqref{eq:2P-iter}; which is fast because we maintain a sparse format, and the distribution vector $v_\star$ is converged to quickly.  
 
 Moreover, on a metro scale network, even large events have relatively local effect.  As a result, we change the model prediction and evaluate their effect on local region around the events (in addition to the global evaluation -- which barely changes).  
 
-We study three cases where we can highlight both intervention types, and both at once.  
+%We study three cases where we can highlight both intervention types, and both at once.  
 
-\subsection{Case study 1: Car crash}\label{sec:crash}
 
-\begin{figure}[H]
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Case study 1: Car Crash}\label{sec:crash}
+
+\begin{figure}[t]
     \centering
     \includegraphics[width=\linewidth]{figures/i15_crash_event_links_GPT.pdf}
     \caption{I-15 northbound crash near Draper, 2018-09-20: the closed
@@ -1949,26 +1873,24 @@ We study three cases where we can highlight both intervention types, and both at
     \label{fig:crash-event}
 \end{figure}
 
-We repeat the analysis around the I-15 northbound crash near Draper on
-Thursday, September 20, 2018, which closed a freeway segment during the
-morning. We run the chains over the 60 five-minute slots from 07:00 to
-11:55 and report the Overall MRE on an evaluation box around the closure
-(975 open links) and on the whole network. The prior is the previous
-week's diffused origins $\tilde{E}_{b-7d}$ (the same hours on Thursday,
-September 13) and the target is the crash-day popularity; both chains use
-speed and lane exponents (single phase $\alpha = 0.0508$; two-phase
-up/down $\beta = 0.102$, $\rho = 0.101$). The closed set is the single
-northbound I-15 link covering the crash point (the non-expanded red set
-of the event figure). We compare the unmodified network (\emph{no
-surgery}) with \emph{surgery}, which removes the closed link from the
-network and redistributes its popularity onto the evaluation box.
-Table~\ref{tab:crash-surgery} (previous-week prior) and
-Table~\ref{tab:crash-surgery-sameday} (same-day prior) report the
-results. With only one freeway link closed, surgery shifts the box error
-modestly (about $2\%$), since a single link carries little popularity
-mass to redistribute.
+On Thursday, September 20, 2018 a car crashed on the I-15 northbound, which
+closed a freeway segment during the morning. We run our model over the 60
+five-minute slots from 07:00 to 11:55 and report the Overall MRE on an
+evaluation box around the closure (975 open links) and on the whole network.
+The teleportation prior is the previous week's diffused origins
+$\tilde{E}_{b-7d}$ (the same hours on Thursday, September 13) and the target
+is the diffused crash-day population $\tilde F_b$; we keep our model
+parameters fixed. The closed region is the single northbound I-15 link
+covering the crash point.
 
-\begin{table}[H]
+We compare the unmodified network (\emph{no surgery}) with \emph{surgery},
+which deletes the closed link from the chain's transition matrices, so that
+no walk can step into or out of it, and re-solves for $v_\star$ on the
+reduced network. Table~\ref{tab:crash-surgery} (previous-week prior) reports
+the results. With only one freeway link closed, surgery shifts the box error
+modestly (about $1$--$2\%$).
+
+\begin{table}[t]
 \centering
 \caption{I-15 Draper crash: Overall MRE with and without surgery, under
 the previous-week prior.}
@@ -1978,388 +1900,230 @@ the previous-week prior.}
 \toprule
                   & eval box & whole network \\
 \cmidrule(lr){2-2}\cmidrule(lr){3-3}
-model (condition) & OV. MRE (st. dev) & OV. MRE (st. dev) \\
+condition & OV. MRE (st. dev) & OV. MRE (st. dev) \\
 \midrule
-SP (no surgery) & $1.8382$ ($0.7570$) & $1.7438$ ($0.7269$) \\
-\rowcolor{gray!15} SP (surgery) & $1.8011$ ($0.7488$) & $1.7456$ ($0.7278$) \\
-\midrule
-TP (no surgery) & $1.8475$ ($0.7605$) & $1.7374$ ($0.7259$) \\
-TP (surgery) & $1.8178$ ($0.7549$) & $1.7395$ ($0.7269$) \\
+%SP (no surgery) & $1.8382$ ($0.7570$) & $1.7438$ ($0.7269$) \\
+%SP (surgery) & $1.8046$ ($0.7498$) & $1.7456$ ($0.7278$) \\
+%\midrule
+no surgery & $1.8475$ ($0.7605$) & $1.7374$ ($0.7259$) \\
+surgery & $1.8214$ ($0.7558$) & $1.7395$ ($0.7269$) \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\subsection{Case study 2: Large Sporting Event}\label{sec:stadium}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Case study 2: Large Sporting Event}
+\label{sec:stadium}
 
 A Saturday football game at Rice-Eccles Stadium (Washington at Utah,
 2018-09-15, kickoff 20:00, attendance 47{,}445) is a pure demand event:
-it closes no road, it concentrates trips around the venue. We therefore
+it closes no road, but it concentrates trips around the venue. We therefore
 keep the full network and intervene only on the prior. We score on an
-evaluation box centred on the stadium (Fig.~\ref{fig:stadium-map};
-$1{,}367$ links) over the 72 five-minute bins from 18:00 to 23:55
-(arrival, game, departure), comparing the chain output to the game-day
-popularity. The fed prior is the previous week's diffused origins (the
-clean Saturday 2018-09-08, same hours); both chains use the speed and
-lane exponents (single phase $\alpha=0.0508$; two-phase up/down
-$\beta=0.102$, $\rho=0.101$).
+evaluation box centered on the stadium (Fig.~\ref{fig:stadium-map};
+$1{,}367$ links) over the $12$ five-minute bins from 23:00 to 23:55, the
+end-of-game departure window (the game ended at 23:19), comparing the
+chain output to the game-day diffused traffic population. The fed prior is
+the previous week's diffused origins (the clean Saturday 2018-09-08, same
+hours).
+%both chains use the speed and lane exponents (single phase $\alpha=0.0508$; two-phase up/down $\beta=0.102$, $\rho=0.101$).
 
-\begin{figure}[H]
-\centering
+\begin{figure}[t]
 \includegraphics[width=\linewidth]{figures/rice_eccles_event_links_GPT.pdf}
 \caption{Rice-Eccles study area: the evaluation box (dashed) and the
 stadium (marker); no links are closed.}
 \label{fig:stadium-map}
 \end{figure}
 
-\paragraph{Reweighting the prior.} Partition the links into the
+Normally, we would learn the expected traffic from similar prior events, but without that in the dataset, we perform a test train split on the links within the evaluation box, and learn the increase in traffic population that way.
+To do so, we partition all links into the
 evaluation box $B$ and its complement $A$, with prior masses
-$a=\sum_{x\in A}p(x)$ and $b=\sum_{x\in B}p(x)$, $a+b=1$. We move a mass
-$\gamma$ from $A$ into $B$:
-\begin{equation}\label{eq:gamma}
-q(x)=p(x)\left(1-\frac{\gamma}{a}\right)\ \ (x\in A),
+$a=\sum_{x\in A}p(x)$ and $b=\sum_{x\in B}p(x)$, $a+b=1$. We move a traffic probability
+$\psi$ from $A$ into $B$:
+\[
+q(x)=p(x)\left(1-\frac{\psi}{a}\right)\ \ (x\in A),
 \qquad
-q(x)=p(x)\left(1+\frac{\gamma}{b}\right)\ \ (x\in B).
-\end{equation}
+q(x)=p(x)\left(1+\frac{\psi}{b}\right)\ \ (x\in B).
+\]
 This keeps $q$ a probability distribution ($\sum_x q(x)=1$) and stays
-non-negative for $-b<\gamma<a$. A positive $\gamma$ concentrates the fed
-demand on the stadium box, a negative $\gamma$ thins it, and $\gamma=0$
+non-negative for $-b<\psi<a$. A positive $\psi$ concentrates the fed
+demand on the stadium box, a negative $\psi$ thins it, and $\psi=0$
 recovers the unmodified previous-week prior; the shape within each block
 is unchanged, only the box's share of the mass moves.
 
-\paragraph{Learning $\gamma$.} We treat $\gamma$ as the single free
-parameter and choose it to minimise the eval-box Overall MRE on a
-training portion of the data, then report the error on a held-out
-portion. We validate it over the $1{,}367$ \emph{box links} (random
-$75\%$ train, $25\%$ test), repeated under 5-fold cross-validation with a
-fixed seed; the single-phase and two-phase models are fit independently.
+We treat $\psi$ as the single free parameter and choose it to minimize the
+eval-box mean squared error on a training portion of the data, then report
+the error on a held-out portion. We validate it over the $1{,}367$
+\emph{box links} (random $75\%$ train, $25\%$ test), with a fixed seed; the
+single-phase and two-phase models are fit independently.
 
-\paragraph{Results.} The box MRE is a smooth, single-minimum function of
-$\gamma$, bottoming near $\gamma^\star\approx-0.009$, while the
-whole-network MRE stays flat at $\approx0.93$.
-Table~\ref{tab:stadium-gamma} gives the learned $\gamma^\star$ and the
-held-out box MRE under 5-fold cross-validation. The learned value is
-effectively constant ($\gamma^\star\approx-0.0088$) across both models
-and every fold, and it roughly halves the held-out box MRE (from
-$\approx1.02$ at $\gamma=0$ to $\approx0.42$, a $\sim60\%$ reduction).
-Thus a single, data-light scalar fit on a subset of links transfers
-cleanly to the held-out remainder.
+Table~\ref{tab:stadium-psi} gives the learned $\psi^\star$ and the
+held-out box mean squared error. Both models learn a positive transfer
+($\psi^\star\approx+0.012$) that concentrates the fed demand on the stadium
+box, and it lowers the held-out box squared error below the unmodified
+previous-week prior. A single, data-light scalar fit on a subset of links
+thus transfers cleanly to the held-out remainder.
 
-\begin{table}[H]
+\begin{table}[t]
 \centering
-\caption{Stadium: learned prior-transfer $\gamma^\star$ with train and
-held-out test eval-box Overall MRE (5-fold CV mean; standard deviation
-over bins in parentheses) versus the unmodified prior.}
-\label{tab:stadium-gamma}
+\caption{Stadium: learned population-transfer $\psi^\star$ with train and
+held-out test eval-box mean squared error (single random
+$75/25$ split of the box links). The last column is the held-out test error
+at $\psi=0$.}
+\label{tab:stadium-psi}
 \setlength{\tabcolsep}{8pt}
 \begin{tabular}{lccc}
 \toprule
-model ($\gamma^\star$) & \shortstack{train\\OV. MRE\\ (st.dev)} & \shortstack{test\\OV. MRE\\ (st.dev)} & \shortstack{OV. MRE\\at $\gamma{=}0$\\ (st.dev)} \\
+model ($\psi^\star$) & train & test & $\psi{=}0$ \\
 \midrule
-SP ($-0.0090$) & $0.4175$ ($0.07$) & $0.4184$ ($0.07$) & $1.0253$ ($0.31$) \\
-\rowcolor{gray!15}TP ($-0.0088$) & $0.4022$ ($0.07$) & $0.4022$ ($0.07$) & $1.0128$ ($0.31$) \\
+SP ($+0.012$) & $6205.55$ & $6326.10$ & $6405.14$ \\
+TP ($+0.011$) & $6222.20$ & $6327.89$ & $6403.54$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 
-\subsection{Case study 3: 9th \& 9th festival}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{Case study 3: Street festival}
+\label{sec:festival}
 
 The 9th \& 9th Street Festival (Saturday 2018-09-15, 10:00 to 17:55)
 closes 900~South and 900~East at the 9th-and-9th intersection, $14$ links
-in all (Fig.~\ref{fig:festival-map}). As in the stadium study
+in all (Fig.~\ref{fig:festival-map}). Unlike the stadium, the festival
+removes links, so we first apply surgery (as with the crash,
+\S\ref{sec:crash}): we remove the $14$ closed links from the network, zero
+them out of the prior, and redistribute their popularity onto the
+evaluation box, re-solving the chain on the open network. On top of
+surgery we intervene on the prior. As in the stadium study
 (\S\ref{sec:stadium}), we feed the previous week's diffused origins (the
-clean Saturday 2018-09-08) and score the eval-box Overall MRE, here over
-the $96$ five-minute bins of the festival window, with both chains using
-the same speed and lane exponents. Unlike the stadium, the festival also
-removes links, so we examine surgery, the learned prior transfer, and
-their combination.
+clean Saturday 2018-09-08, same hours) and score on the evaluation box
+(Fig.~\ref{fig:festival-map}; $694$ open links) over the $12$ five-minute
+bins from 17:00 to 17:55, the closing hour of the festival, comparing the
+chain output to the festival-day diffused traffic population.
 
-\begin{figure}[H]
+\begin{figure}[t]
 \centering
 \includegraphics[width=\linewidth]{figures/festival_event_links_GPT.pdf}
-\caption{9th \& 9th festival study area: the $14$ closed links (red), the
+\caption{Street festival study area: the $14$ closed links (red), the
 evaluation box (dashed), and the same area on the basemap.}
 \label{fig:festival-map}
 \end{figure}
 
-\paragraph{Surgery.} Surgery (as defined for the crash, \S\ref{sec:crash})
-removes the $14$ closed links and redistributes their popularity onto the
-box; on its own it shifts the box error only $1$--$2\%$
-(Table~\ref{tab:festival-surgery}).
+We apply the prior mass-transfer $\psi$ of \S\ref{sec:stadium} on top of
+surgery, moving a traffic probability $\psi$ from the open complement into
+the evaluation box. We treat $\psi$ as the single free parameter and
+choose it to minimize the eval-box mean squared error on a training
+portion of the box links (random $75\%$ train, $25\%$ test, fixed seed),
+then report the error on the held-out portion; the single-phase and
+two-phase models are fit independently.
 
-\begin{table}[H]
+Table~\ref{tab:festival-psi} gives the learned $\psi^\star$ and the
+held-out box mean squared error. Both models learn a positive transfer
+($\psi^\star\approx+0.005$) that concentrates the fed demand on the
+festival box, and on top of surgery it lowers the held-out box squared
+error below the unmodified prior. A single, data-light scalar fit on a
+subset of links thus transfers cleanly to the held-out remainder.
+
+\begin{table}[t]
 \centering
-\caption{Festival: eval-box Overall MRE with and without surgery
-(previous-week prior, no $\gamma$).}
-\label{tab:festival-surgery}
-\setlength{\tabcolsep}{10pt}
-\begin{tabular}{lrr}
-\toprule
-condition & SP & TP \\
-\midrule
-no surgery & $1.5094$ & $1.4733$ \\
-surgery    & $1.4945$ & $1.4561$ \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\paragraph{Learned transfer.} We apply the prior mass-transfer $\gamma$ of
-\S\ref{sec:stadium} (Eq.~\ref{eq:gamma}), on the full network and on top
-of surgery, selecting it with the same link train/test protocol under
-5-fold cross-validation. Table~\ref{tab:festival-gamma} reports the
-learned $\gamma^\star$ and the train and held-out test box MRE (5-fold CV
-mean). As in the stadium case, $\gamma^\star$ is near-constant
-($\approx-0.0056$) across models and folds, with train and test in
-agreement. The transfer is the dominant lever, cutting the box MRE from
-$\approx1.5$ to $\approx0.58$ (single phase) and $\approx0.53$ (two-phase),
-about $60\%$, whereas surgery alone gives only $1$--$2\%$; combining the
-two helps only marginally beyond $\gamma$ alone.
-
-\begin{table}[H]
-\centering
-\caption{Festival: learned prior transfer $\gamma^\star$ with train and
-held-out test eval-box MRE (5-fold CV mean), versus the unmodified prior.}
-\label{tab:festival-gamma}
+\caption{Festival: learned prior transfer $\psi^\star$ on top of surgery,
+with train and held-out test eval-box mean squared error (single random $75/25$ split of the $694$ box links). The last
+column is the held-out test error at $\psi=0$.}
+\label{tab:festival-psi}
 \setlength{\tabcolsep}{8pt}
-\begin{tabular}{lrrrr}
+\begin{tabular}{lccc}
 \toprule
-config. (model) & $\gamma^\star$ & \shortstack{train\\MRE} & \shortstack{test\\MRE} & \shortstack{MRE\\at $\gamma{=}0$} \\
+model ($\psi^\star$) & train & test & $\psi{=}0$ \\
 \midrule
-$\gamma$ only (SP)      & $-0.0057$ & $0.5799$ & $0.5799$ & $1.5235$ \\
-$\gamma$ only (TP)      & $-0.0057$ & $0.5315$ & $0.5316$ & $1.4858$ \\
-\midrule
-$\gamma$ + surgery (SP) & $-0.0056$ & $0.5715$ & $0.5715$ & $1.4940$ \\
-\rowcolor{gray!15}$\gamma$ + surgery (TP) & $-0.0056$ & $0.5219$ & $0.5219$ & $1.4561$ \\
+SP ($+0.005$) & $4306.58$ & $5285.57$ & $5410.22$ \\
+TP ($+0.005$) & $4314.97$ & $5321.71$ & $5432.69$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
+\hamid{unfortunately two-phase doesn't work better that single phase here.}
+% \section{Ablation / Appendix}
+% \label{sec:ablation}
 
-\section{Ablation / Appendix}
-\label{sec:ablation}
+% The evaluation framework
+% (\cref{sec:evaluation-framework}) defines the metric (Overall
+% MRE), the two comparisons (dataset-to-dataset, forecast), and
+% the $840$-bin sampling protocol used by every table below.
 
-The evaluation framework
-(\cref{sec:evaluation-framework}) defines the metric (Overall
-MRE), the two comparisons (dataset-to-dataset, forecast), and
-the $840$-bin sampling protocol used by every table below.
+% \subsection{Evaluation results}
+% \label{sec:evaluation}
 
-\subsection{Evaluation results}
-\label{sec:evaluation}
+% \Cref{tab:eval} reports the three comparisons in three
+% configurations: raw prior with $\varepsilon = 10^{-6}$, diffused
+% prior with $\varepsilon = 10^{-6}$, and diffused prior with
+% $\varepsilon = 0$. The chain uses the calibrated parameters
+% $\beta = 0.102, \rho = 0.101$ and $P^{\uparrow}, P^{\downarrow}$
+% uniform over outgoing road-graph neighbors. Iteration tolerance
+% is $10^{-7}$, maximum $300$ iterations.
 
-\Cref{tab:eval} reports the three comparisons in three
-configurations: raw prior with $\varepsilon = 10^{-6}$, diffused
-prior with $\varepsilon = 10^{-6}$, and diffused prior with
-$\varepsilon = 0$. The chain uses the calibrated parameters
-$\beta = 0.102, \rho = 0.101$ and $P^{\uparrow}, P^{\downarrow}$
-uniform over outgoing road-graph neighbors. Iteration tolerance
-is $10^{-7}$, maximum $300$ iterations.
+% \begin{table}[H]
+% \centering
+% \caption{Overall MRE of the two-phase chain across $840$
+% random target bins ($120$ per day of the week) on the SLC corpus.
+% $\beta=0.102, \rho=0.101$. Lower is better. ``No diffusion''
+% uses the raw prior $E_b$ of \cref{sec:counting}; ``Diffused''
+% uses the diffused prior $\tilde E_b$ of \cref{sec:diffusion}.}
+% \label{tab:eval}
+% \setlength{\tabcolsep}{6pt}
+% \renewcommand{\arraystretch}{1.30}
+% \begin{tabular}{@{}lccc@{}}
+% \toprule
+% Comparison
+% & \shortstack[c]{No diffusion\\$\varepsilon\!=\!10^{-6}$}
+% & \shortstack[c]{Diffused\\$\varepsilon\!=\!10^{-6}$}
+% & \shortstack[c]{Diffused\\$\varepsilon\!=\!0$} \\
+% \midrule
+% 1. dataset$\to$dataset (next week) & $5.82$ & $\mathbf{0.68}$ & $0.90$ \\
+% 2. dataset$\to$model (forecast)    & $8.53$ & $1.04$ & $1.42$ \\
+% \bottomrule
+% \end{tabular}
+% \end{table}
 
-\begin{table}[H]
-\centering
-\caption{Overall MRE of the two-phase chain across $840$
-random target bins ($120$ per day of the week) on the SLC corpus.
-$\beta=0.102, \rho=0.101$. Lower is better. ``No diffusion''
-uses the raw prior $E_b$ of \cref{sec:counting}; ``Diffused''
-uses the diffused prior $\tilde E_b$ of \cref{sec:diffusion}.}
-\label{tab:eval}
-\setlength{\tabcolsep}{6pt}
-\renewcommand{\arraystretch}{1.30}
-\begin{tabular}{@{}lccc@{}}
-\toprule
-Comparison
-& \shortstack[c]{No diffusion\\$\varepsilon\!=\!10^{-6}$}
-& \shortstack[c]{Diffused\\$\varepsilon\!=\!10^{-6}$}
-& \shortstack[c]{Diffused\\$\varepsilon\!=\!0$} \\
-\midrule
-1. dataset$\to$dataset (next week) & $5.82$ & $\mathbf{0.68}$ & $0.90$ \\
-2. dataset$\to$model (forecast)    & $8.53$ & $1.04$ & $1.42$ \\
-\bottomrule
-\end{tabular}
-\end{table}
+% Two readings of the table.
 
-Two readings of the table.
+% \paragraph{Forecast sits above the noise floor.}
+% Row $2$ forecast Overall MRE is $1.04$, above the noise floor of
+% row $1$ at $0.68$. The chain's forecast of next week's signal is
+% therefore worse than last-week-at-the-same-slot. Since the chain
+% has no temporal dynamics (no time index in $M_b$ except through
+% the prior of the target bin), improving forecast performance
+% would require additional signal: weekly periodicity, multi-bin
+% context, or external covariates, none of which are part of the
+% current model.
 
-\paragraph{Forecast sits above the noise floor.}
-Row $2$ forecast Overall MRE is $1.04$, above the noise floor of
-row $1$ at $0.68$. The chain's forecast of next week's signal is
-therefore worse than last-week-at-the-same-slot. Since the chain
-has no temporal dynamics (no time index in $M_b$ except through
-the prior of the target bin), improving forecast performance
-would require additional signal: weekly periodicity, multi-bin
-context, or external covariates, none of which are part of the
-current model.
-
-\paragraph{Empty-link contribution to the overall MRE.}
-The Overall MRE without the regularizer inflates to $\sim\!8$ in
-the leftmost column because the many empty links contribute
-$\frac{|p_i|}{\varepsilon}$ each; $\varepsilon = 10^{-6}$ caps
-this contribution but does not eliminate it. With every truth
-value positive, the Overall MRE drops to $0.67$--$1.37$, a range
-in which the metric is interpretable as a relative error average.
+% \paragraph{Empty-link contribution to the overall MRE.}
+% The Overall MRE without the regularizer inflates to $\sim\!8$ in
+% the leftmost column because the many empty links contribute
+% $\frac{|p_i|}{\varepsilon}$ each; $\varepsilon = 10^{-6}$ caps
+% this contribution but does not eliminate it. With every truth
+% value positive, the Overall MRE drops to $0.67$--$1.37$, a range
+% in which the metric is interpretable as a relative error average.
 
 
+\section{Conclusion and Discussion}
+\label{sec:conclude}
 
-\begin{thebibliography}{99}
+We show how to build a metro-scale traffic model at the link level, at 5-minute resolution, from large yet extremely sparse data.  Such data is very noisy week to week, and overcoming the noise and sparsity is a significant challenge.  
 
-\bibitem{meert2018hmm}
-Wannes Meert and Mathias Verbeke.
-\newblock HMM with non-emitting states for map matching.
-\newblock In \emph{European Conference on Data Analysis (ECDA)}, Paderborn, Germany, July 2018.
+A key feature of our model is that it is a learned PageRank model, that is optimized to the training data.  
+This means that the model can not only easily generate full routes, but also quickly provides full metro-wide traffic population estimates.  Competing methods do not offer this level of resolution for the routes, or do not allow for directly inferred population predictions.  
 
-\bibitem{leuvenmapmatching}
-Wannes Meert.
-\newblock \emph{Leuven Map-Matching: a Python library for matching GPS trajectories to road networks}.
-\newblock KU Leuven, DTAI Research Group, 2015--2024.
-\newblock \url{https://github.com/wannesm/LeuvenMapMatching}.
-
-\bibitem{newson2009hmm}
-Paul Newson and John Krumm.
-\newblock Hidden Markov map matching through noise and sparseness.
-\newblock In \emph{Proceedings of the 17th ACM SIGSPATIAL International Conference on Advances in Geographic Information Systems (GIS '09)}, pages 336--343. ACM, 2009.
-\newblock \href{https://doi.org/10.1145/1653771.1653818}{doi:10.1145/1653771.1653818}.
-
-\bibitem{sinnott1984haversine}
-Roger W. Sinnott.
-\newblock Virtues of the Haversine.
-\newblock \emph{Sky and Telescope}, 68:158, 1984.
-\newblock \url{https://ui.adsabs.harvard.edu/abs/1984S\%26T....68..158S/abstract}.
-
-\bibitem{snyder1987maps}
-John P. Snyder.
-\newblock \emph{Map Projections: A Working Manual}.
-\newblock U.S. Geological Survey Professional Paper 1395, U.S. Government Printing Office, Washington, DC, 1987.
-\newblock Chapter~12, ``Equidistant Cylindrical Projection'', pp.~90--91.
-\newblock \url{https://pubs.usgs.gov/pp/1395/report.pdf}.
-
-\bibitem{quddus2007mapmatching}
-Mohammed A. Quddus, Washington Y. Ochieng, and Robert B. Noland.
-\newblock Current map-matching algorithms for transport applications: state-of-the-art and future research directions.
-\newblock \emph{Transportation Research Part C: Emerging Technologies}, 15(5):312--328, 2007.
-\newblock \href{https://doi.org/10.1016/j.trc.2007.05.002}{doi:10.1016/j.trc.2007.05.002}.
-
-\bibitem{lou2009stmatching}
-Yin Lou, Chengyang Zhang, Yu Zheng, Xing Xie, Wei Wang, and Yan Huang.
-\newblock Map-matching for low-sampling-rate GPS trajectories.
-\newblock In \emph{Proceedings of the 17th ACM SIGSPATIAL International Conference on Advances in Geographic Information Systems (GIS '09)}, pages 352--361. ACM, 2009.
-\newblock \href{https://doi.org/10.1145/1653771.1653820}{doi:10.1145/1653771.1653820}.
-
-\bibitem{agryzkov2023nonlocal}
-Taras Agryzkov, Leandro Tortosa, and Jos\'e F. Vicent.
-\newblock Extending the Adapted PageRank Algorithm centrality model for urban street networks using non-local random walks.
-\newblock \emph{Applied Mathematics and Computation}, 447:127531, 2023.
-\newblock \href{https://doi.org/10.1016/j.amc.2023.127531}{doi:10.1016/j.amc.2023.127531}.
-
-\bibitem{gonzalez2008mobility}
-Marta C. Gonz\'alez, C\'esar A. Hidalgo, and Albert-L\'aszl\'o Barab\'asi.
-\newblock Understanding individual human mobility patterns.
-\newblock \emph{Nature}, 453:779--782, 2008.
-\newblock \href{https://doi.org/10.1038/nature06958}{doi:10.1038/nature06958}.
-
-\bibitem{helbing2001traffic}
-Dirk Helbing.
-\newblock Traffic and related self-driven many-particle systems.
-\newblock \emph{Reviews of Modern Physics}, 73(4):1067--1141, 2001.
-\newblock \href{https://doi.org/10.1103/RevModPhys.73.1067}{doi:10.1103/RevModPhys.73.1067}.
-
-\bibitem{iqbal2014odmatrices}
-Md.~Shahadat Iqbal, Charisma F. Choudhury, Pu Wang, and Marta C. Gonz\'alez.
-\newblock Development of origin-destination matrices using mobile phone call data.
-\newblock \emph{Transportation Research Part C: Emerging Technologies}, 40:63--74, 2014.
-\newblock \href{https://doi.org/10.1016/j.trc.2014.01.002}{doi:10.1016/j.trc.2014.01.002}.
-
-\bibitem{yang2017odprobe}
-Xiangdong Yang, Yang Lu, and Wei Hao.
-\newblock Origin-destination estimation using probe vehicle trajectory and link counts.
-\newblock \emph{Journal of Advanced Transportation}, 2017:4341532, 2017.
-\newblock \href{https://doi.org/10.1155/2017/4341532}{doi:10.1155/2017/4341532}.
-
-\bibitem{wang2012roadusage}
-Pu Wang, Timothy Hunter, Alexandre M. Bayen, Katja Schechtner, and Marta C. Gonz\'alez.
-\newblock Understanding road usage patterns in urban areas.
-\newblock \emph{Scientific Reports}, 2:1001, 2012.
-\newblock \href{https://doi.org/10.1038/srep01001}{doi:10.1038/srep01001}.
-
-\bibitem{zheng2015trajectory}
-Yu Zheng.
-\newblock Trajectory data mining: an overview.
-\newblock \emph{ACM Transactions on Intelligent Systems and Technology}, 6(3):29, 2015.
-\newblock \href{https://doi.org/10.1145/2743025}{doi:10.1145/2743025}.
-
-\bibitem{yuan2010tdrive}
-Jing Yuan, Yu Zheng, Chengyang Zhang, Wenlei Xie, Xing Xie, Guangzhong Sun, and Yan Huang.
-\newblock T-drive: driving directions based on taxi trajectories.
-\newblock In \emph{Proceedings of the 18th ACM SIGSPATIAL International Conference on Advances in Geographic Information Systems (GIS '10)}, pages 99--108. ACM, 2010.
-\newblock \href{https://doi.org/10.1145/1869790.1869807}{doi:10.1145/1869790.1869807}.
-
-\bibitem{li2015percolation}
-Daqing Li, Bowen Fu, Yunpeng Wang, Guangquan Lu, Yehiel Berezin, H.~Eugene Stanley, and Shlomo Havlin.
-\newblock Percolation transition in dynamical traffic network with evolving critical bottlenecks.
-\newblock \emph{Proceedings of the National Academy of Sciences (PNAS)}, 112(3):669--672, 2015.
-\newblock \href{https://doi.org/10.1073/pnas.1419185112}{doi:10.1073/pnas.1419185112}.
-
-\bibitem{jenelius2006importance}
-Erik Jenelius, Tom Petersen, and Lars-G\"oran Mattsson.
-\newblock Importance and exposure in road network vulnerability analysis.
-\newblock \emph{Transportation Research Part A: Policy and Practice}, 40(7):537--560, 2006.
-\newblock \href{https://doi.org/10.1016/j.tra.2005.11.003}{doi:10.1016/j.tra.2005.11.003}.
-
-\bibitem{latora2005vulnerability}
-Vito Latora and Massimo Marchiori.
-\newblock Vulnerability and protection of infrastructure networks.
-\newblock \emph{Physical Review E}, 71:015103(R), 2005.
-\newblock \href{https://doi.org/10.1103/PhysRevE.71.015103}{doi:10.1103/PhysRevE.71.015103}.
-
-\bibitem{shuman2013gsp}
-David I. Shuman, Sunil K. Narang, Pascal Frossard, Antonio Ortega, and Pierre Vandergheynst.
-\newblock The emerging field of signal processing on graphs: extending high-dimensional data analysis to networks and other irregular domains.
-\newblock \emph{IEEE Signal Processing Magazine}, 30(3):83--98, 2013.
-\newblock \href{https://doi.org/10.1109/MSP.2012.2235192}{doi:10.1109/MSP.2012.2235192}.
-
-\bibitem{defferrard2016chebnet}
-Micha\"el Defferrard, Xavier Bresson, and Pierre Vandergheynst.
-\newblock Convolutional neural networks on graphs with fast localized spectral filtering.
-\newblock In \emph{Advances in Neural Information Processing Systems (NeurIPS)} 29, pages 3837--3845, 2016.
-\newblock \url{https://arxiv.org/abs/1606.09375}.
-
-\bibitem{horni2016matsim}
-Andreas Horni, Kai Nagel, and Kay W. Axhausen (editors).
-\newblock \emph{The Multi-Agent Transport Simulation MATSim}.
-\newblock Ubiquity Press, London, 2016.
-\newblock \href{https://doi.org/10.5334/baw}{doi:10.5334/baw}.
-
-\bibitem{balmer2006matsim}
-Michael Balmer, Kay W. Axhausen, and Kai Nagel.
-\newblock Agent-based demand-modeling framework for large-scale microsimulations.
-\newblock \emph{Transportation Research Record: Journal of the Transportation Research Board}, 1985:125--134, 2006.
-\newblock \href{https://doi.org/10.1177/0361198106198500114}{doi:10.1177/0361198106198500114}.
-
-\bibitem{wang2017pagerank}
-Minjie Wang, Su Yang, Yi Sun, and Jun Gao.
-\newblock Discovering urban mobility patterns with PageRank based traffic modeling and prediction.
-\newblock \emph{Physica A: Statistical Mechanics and its Applications}, 485:23--34, 2017.
-\newblock \href{https://doi.org/10.1016/j.physa.2017.04.155}{doi:10.1016/j.physa.2017.04.155}.
-
-\bibitem{jiang2009ranking}
-Bin Jiang.
-\newblock Ranking spaces for predicting human movement in an urban environment.
-\newblock \emph{International Journal of Geographical Information Science}, 23(7):823--837, 2009.
-\newblock \href{https://doi.org/10.1080/13658810802022822}{doi:10.1080/13658810802022822}.
-
-\bibitem{bazzani2010florence}
-Armando Bazzani, Bruno Giorgini, Sandro Rambaldi, Riccardo Gallotti, and Luca Giovannini.
-\newblock Statistical laws in urban mobility from microscopic GPS data in the area of Florence.
-\newblock \emph{Journal of Statistical Mechanics: Theory and Experiment}, 2010(05):P05001, 2010.
-\newblock \href{https://doi.org/10.1088/1742-5468/2010/05/P05001}{doi:10.1088/1742-5468/2010/05/P05001}.
-
-\bibitem{liang2013exponential}
-Xiao Liang, Jichang Zhao, Li Dong, and Ke Xu.
-\newblock Unraveling the origin of exponential law in intra-urban human mobility.
-\newblock \emph{Scientific Reports}, 3:2983, 2013.
-\newblock \href{https://doi.org/10.1038/srep02983}{doi:10.1038/srep02983}.
+Through a combination of realistic traffic smoothing and careful modeling, we produce estimates that are plausible and significantly better than the raw measurement distributions.  We believe this underexplored modeling at this scale offers a lot of promise for metro-scale foundation models for traffic and mobility.  
 
 
 
-\end{thebibliography}
+
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{refs}
 
 
 
@@ -2920,21 +2684,95 @@ Xiao Liang, Jichang Zhao, Li Dong, and Ke Xu.
 % \end{table*}
 
 
-\begin{table}[H]
+
+
+\clearpage
+
+\section*{Appendix}
+
+\begin{table}[b]
 \centering
-\caption{Week-to-week Overall MRE of the diffused popularity over the full
-corpus (all $2016$ bins of the week; next week as truth, previous week as
-prediction). Standard deviation over bins in parentheses.\hamid{week to week diffused data comparison.}}
-\label{tab:week-to-week-noise-floor}
-\setlength{\tabcolsep}{8pt}
-\begin{tabular}{lc}
+\caption{Displacement of zero cells
+($n_{\textsf{zero}} = 1.95 \times 10^{8}$) in units of
+$\NFG = 2.65 \times 10^{-4}$.}
+\label{tab:gamma-zero-cells}
+\small
+\setlength{\tabcolsep}{6pt}
+\begin{tabular}{cccc}
 \toprule
-comparison & \shortstack{OV. MRE\\(st.\ dev)} \\
+$\gamma$ & median & $95$th pct.\ & $>\!0.5$ \\
 \midrule
-Week 2 vs Week 1 & $0.6722$ ($0.3867$) \\
-\rowcolor{gray!15}Week 3 vs Week 2 & $0.6528$ ($0.3393$) \\
-Week 4 vs Week 3 & $0.6558$ ($0.3331$) \\
+$0.00$ & $0.0004$ & $0.0004$ & $0.00\%$ \\
+$0.05$ & $0.0004$ & $0.0004$ & $0.01\%$ \\
+$0.10$ & $0.0004$ & $0.0004$ & $0.03\%$ \\
+$0.12$ & $0.0004$ & $0.0004$ & $0.04\%$ \\
+$0.13$ & $0.0004$ & $0.0004$ & $0.04\%$ \\
+$0.14$ & $0.0004$ & $0.0004$ & $0.05\%$ \\
+$0.15$ & $0.0004$ & $0.0004$ & $0.05\%$ \\
+\rowcolor{gray!15} 
+$0.20$
+       & $0.0004$ & $0.0004$ & $0.08\%$ \\
+$0.25$ & $0.0004$ & $0.0004$ & $0.10\%$ \\
+$0.30$ & $0.0004$ & $0.0004$ & $0.13\%$ \\
+$0.40$ & $0.0004$ & $0.0004$ & $0.20\%$ \\
+$0.50$ & $0.0004$ & $0.0004$ & $0.28\%$ \\
+$0.70$ & $0.0003$ & $0.0004$ & $0.46\%$ \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+
+Table \ref{tab:gamma-zero-cells} shows similar statistics for the cells with initial counts of $0$. In this case it only makes sense to use the global noise floor $\NFG$.  
+The median
+and $95$th-percentile ratios are essentially constant at
+$\approx 4 \times 10^{-4}$ across all $\gamma$: at least $95\%$
+of zero cells never see diffusion mass, they only carry the
+Laplace floor $\alpha / N$. The fraction of zero cells exceeding
+the half-noise tolerance is $0.08\%$ at $\gamma = 0.20$
+($\sim 1.5 \times 10^{5}$ cells out of $1.95 \times 10^{8}$);
+these are the cells immediately adjacent to active links and
+they are the ones that get filled in. The takeaway is
+that the diffusion is bounded even on the cells where the
+per-cell criterion of \cref{tab:gamma-noise-floor} is undefined:
+it lifts a small adjacency-defined tail of zero cells into the
+noise band and leaves the rest at the Laplace floor.  
+
+
+
+
+
+
+~\newpage
+~\newpage
+
+
+\begin{table}[H]
+\centering
+\caption{}
+\label{tab:stadium-psi-mse}
+\begin{tabular}{ccrrrrr}
+\toprule
+Hour & Model & $\psi^{*}$ & Train@$\psi^{*}$ & Train@$0$ & Test@$\psi^{*}$ & Test@$0$ \\
+\midrule
+18 & SP & $+0.0060$ & $4098.92$ & $4116.94$ & $3199.26$ & $3215.43$ \\
+18 & TP & $+0.0040$ & $4119.03$ & $4130.26$ & $3208.71$ & $3220.75$ \\
+\midrule
+19 & SP & $+0.0180$ & $7789.84$ & $7967.86$ & $6729.54$ & $6974.11$ \\
+19 & TP & $+0.0160$ & $7832.43$ & $7985.14$ & $6783.59$ & $6989.91$ \\
+\midrule
+20 & SP & $+0.0080$ & $5608.02$ & $5648.78$ & $5262.27$ & $5312.08$ \\
+20 & TP & $+0.0070$ & $5634.68$ & $5663.83$ & $5296.18$ & $5330.86$ \\
+\midrule
+21 & SP & $+0.0020$ & $2967.42$ & $2970.00$ & $3609.55$ & $3614.71$ \\
+21 & TP & $+0.0010$ & $2978.30$ & $2979.32$ & $3623.94$ & $3626.01$ \\
+\midrule
+22 & SP & $+0.0020$ & $2974.83$ & $2976.73$ & $4548.24$ & $4560.84$ \\
+22 & TP & $+0.0010$ & $2983.92$ & $2984.89$ & $4565.62$ & $4571.71$ \\
+\midrule
+23 & SP & $+0.0120$ & $6205.55$ & $6281.02$ & $6326.10$ & $6405.14$ \\
+23 & TP & $+0.0110$ & $6222.20$ & $6289.60$ & $6327.89$ & $6403.54$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 \end{document}

@@ -20,25 +20,25 @@
       "prior": "prev-week"
     },
     {
-      "box_mean": 1.8108317776318072,
-      "box_dev": 0.752455129422828,
-      "whole_mean": 1.7455472865571757,
-      "whole_dev": 0.7277526412122928,
-      "model": "sp",
-      "surgery": "surgery1",
-      "prior": "prev-week"
-    },
-    {
-      "box_mean": 1.8011210153843866,
-      "box_dev": 0.7488381423526607,
-      "whole_mean": 1.745603549369679,
-      "whole_dev": 0.7277843343044075,
+      "box_mean": 1.81427413339334,
+      "box_dev": 0.7533854086937568,
+      "whole_mean": 1.7455454709852327,
+      "whole_dev": 0.727751588410962,
       "model": "sp",
       "surgery": "surgery2",
       "prior": "prev-week"
     },
     {
-      "box_mean": 1.847474735387725,
+      "box_mean": 1.8045527577515634,
+      "box_dev": 0.7497768839848283,
+      "whole_mean": 1.7456016283437583,
+      "whole_dev": 0.7277832597904986,
+      "model": "sp",
+      "surgery": "surgery_box",
+      "prior": "prev-week"
+    },
+    {
+      "box_mean": 1.8474747353877252,
       "box_dev": 0.7605416020086103,
       "whole_mean": 1.7374250008156078,
       "whole_dev": 0.7258673504269721,
@@ -47,21 +47,21 @@
       "prior": "prev-week"
     },
     {
-      "box_mean": 1.827647500394714,
-      "box_dev": 0.7586077174516584,
-      "whole_mean": 1.7394354217716896,
-      "whole_dev": 0.7268446973060034,
+      "box_mean": 1.8312244814029974,
+      "box_dev": 0.7595147592822205,
+      "whole_mean": 1.7394331671616137,
+      "whole_dev": 0.7268434749696299,
       "model": "tp",
-      "surgery": "surgery1",
+      "surgery": "surgery2",
       "prior": "prev-week"
     },
     {
-      "box_mean": 1.8178354745688206,
-      "box_dev": 0.7548949391128799,
-      "whole_mean": 1.7394907382822662,
-      "whole_dev": 0.7268757862675996,
+      "box_mean": 1.8214014281112312,
+      "box_dev": 0.7558104836835571,
+      "whole_mean": 1.7394883740688443,
+      "whole_dev": 0.7268745394386722,
       "model": "tp",
-      "surgery": "surgery2",
+      "surgery": "surgery_box",
       "prior": "prev-week"
     }
   ]
