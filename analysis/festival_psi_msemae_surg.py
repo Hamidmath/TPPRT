@@ -25,7 +25,7 @@ B2=(40.747908,40.752069,-111.865526,-111.865140)   # NS 900 E (closed)
 BOX=(40.741419,40.756455,-111.876984,-111.853615)
 GAMMAS=np.round(np.linspace(-0.012,0.04,53),4)
 SEED=0
-HOURS=list(range(10,18))
+HOURS=[int(x) for x in os.environ.get("TPPR_HOURS","10,11,12,13,14,15,16,17").split(",")]
 def get_speed_lane(g, links):
     s,l=[],[]
     for lid in links:
