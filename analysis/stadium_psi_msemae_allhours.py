@@ -174,7 +174,6 @@ def main():
                   %(hour if model=="sp" else 0, model.upper(),
                     ra["psi"],ra["test"],ra["test0"], rs["psi"],rs["test"],rs["test0"]))
         print("  -----+-------+--------------------------------+-------------------------------")
-    # ---- FULL WINDOW: pool all 72 bins (18:00-23:55) into one fit ----
     allbins={}
     for m in ("sp_abs","sp_sq","tp_abs","tp_sq"):
         allbins[m]=np.concatenate([np.stack([res[h][k][m] for k in range(len(res[h]))]) for h in HOURS],axis=0)

@@ -13,15 +13,15 @@ ORIGINS_NPZ = str(INPUTS / "origins_results.npz")
 SMOOTH_NPZ  = str(INPUTS / "popularity_results_smoothed_osm_gamma020.npz")
 GRAPH_JSON  = str(INPUTS / "city_graph_full.json")
 NETWORK_XML = str(INPUTS / "slc_network.xml")
-MODE=os.environ.get("TPPR_MODE","gamma_surg2")   # gamma_surg2 = paper surgery (remove closed, popularity->box)
+MODE=os.environ.get("TPPR_MODE","gamma_surg2")
 OUT_JSON = RESULTS / f"festival_psi_msemae_{MODE}.json"
 EPS=1e-6; TOL=1e-5; MAXI=200
 SP_ALPHA=0.0508; SP_AS=1.7513; SP_AL=0.4358
 BETA=0.102; RHO=0.101
 TP_ASU=4.6489; TP_ASD=-0.5722; TP_ALU=1.1607; TP_ALD=-0.1673
 LAPLACE=0.01; GAMMA_DIFF=0.20
-B1=(40.749590,40.749940,-111.868348,-111.863884)   # EW 900 S (closed)
-B2=(40.747908,40.752069,-111.865526,-111.865140)   # NS 900 E (closed)
+B1=(40.749590,40.749940,-111.868348,-111.863884)
+B2=(40.747908,40.752069,-111.865526,-111.865140)
 BOX=(40.741419,40.756455,-111.876984,-111.853615)
 GAMMAS=np.round(np.linspace(-0.012,0.04,53),4)
 SEED=0
@@ -123,7 +123,7 @@ def _init():
     box_idx=np.array(sorted(idx[c] for c in box if c in idx and c not in closed),np.int64)
     in_box=np.zeros(N,bool); in_box[box_idx]=True
     is_closed=np.zeros(N,bool); is_closed[closed_idx]=True
-    A_idx=np.where(~in_box & ~is_closed)[0]   # complement = open links outside the box
+    A_idx=np.where(~in_box & ~is_closed)[0]
     succ=build_per_source(g,links,idx,closed); dm=np.array([s.size==0 for s in succ],bool)
     P_sp=build_P(N,succ,np.power(speeds,SP_AS)*np.power(lanes,SP_AL))
     P_up=build_P(N,succ,np.power(speeds,TP_ASU)*np.power(lanes,TP_ALU))
@@ -143,12 +143,13 @@ def worker(payload):
     ti=W["Otidx"].get(slot08)
     raw=W["bO"]["matrix"].getrow(ti).toarray().ravel().astype(float) if ti is not None else None
     E=diffuse(raw,W["Oproj"],W["Oval"],N,W["Pdiff"])
-    if MODE!="gamma_only": E=zoc(E,closed_idx)                 # surgery prior: zero closed + renorm
+    if MODE in ("gamma_surg1","gamma_surg2"): E=zoc(E,closed_idx)
+    elif MODE=="gamma_surgbox": E=redist_to_box(E,closed_idx,box_idx)
     row=W["bP"]["matrix"].getrow(W["Ptidx"][slot15]).toarray().ravel().astype(float)
     F=np.zeros(N); np.add.at(F,W["Pproj"][W["Pval"]],row[W["Pval"]]); s=F.sum()
     if s>0: F/=s
-    if MODE=="gamma_surg1": F=zoc(F,closed_idx)                # surgery target: zero closed + renorm (whole)
-    elif MODE=="gamma_surg2": F=redist_to_box(F,closed_idx,box_idx)  # surgery target: closed popularity -> box
+    if MODE=="gamma_surg1": F=zoc(F,closed_idx)
+    elif MODE in ("gamma_surg2","gamma_surgbox"): F=redist_to_box(F,closed_idx,box_idx)
     Fb=F[box_idx]; b=float(E[box_idx].sum()); a=1.0-b
     ng=len(GAMMAS)
     out={m:np.zeros((ng,nb),np.float32) for m in ("sp_abs","sp_sq","tp_abs","tp_sq")}
@@ -199,7 +200,6 @@ def main():
                   %(hour if model=="sp" else 0, model.upper(),
                     ra["psi"],ra["test"],ra["test0"], rs["psi"],rs["test"],rs["test0"]))
         print("  -----+-------+--------------------------------+-------------------------------")
-    # ---- FULL WINDOW: pool all bins (10:00-17:55) into one fit ----
     allbins={}
     for m in ("sp_abs","sp_sq","tp_abs","tp_sq"):
         allbins[m]=np.concatenate([np.stack([res[h][k][m] for k in range(len(res[h]))]) for h in HOURS],axis=0)
@@ -218,7 +218,6 @@ def main():
     for model in ("sp","tp"):
         r=fit_full(allbins[f"{model}_sq"]); out["full_window"][model]=r
         print("| %s | %+0.4f | %.2f | %.2f | %.2f | %.2f |"%(model.upper(),r["psi"],r["train"],r["test"],r["test0"],r["allbox0"]))
-    # ---- 5-fold CV over box links (full window, MSE); learn psi on 4 folds, test on the held-out fold ----
     KFOLD=5
     def fit_cv(M):
         nl=M.shape[2]; rng2=np.random.default_rng(SEED); folds=np.array_split(rng2.permutation(nl),KFOLD)

@@ -20,3 +20,11 @@ Link-level traffic prediction on the Salt Lake City road network from INRIX prob
                  ▼   core/pagerank.py        two-phase PageRank chain
            per-link traffic forecast
 ```
+
+## Event case studies
+
+We stress-test the model on three Salt Lake City events:
+
+- **I-15 crash** — a lane closure. We cut the closed link from the network, re-solve the chain, and compare the eval-box error with and without this surgery.
+- **Stadium game** — a pure demand surge, no closures. We learn a prior mass-transfer ψ that shifts demand onto the stadium box, fit on a held-out split of the box links.
+- **9th & 9th street festival** — a road closure plus a demand shift. We combine surgery (remove the closed streets) with the learned ψ, chosen by 5-fold cross-validation.
