@@ -1,6 +1,6 @@
 """Single-panel version of noise_floor_with_zeros.py: keep only the
 "active cells only" view (the left panel). Output saved to
-documents/walkthrough2/figures/noise_floor_without_zeros.pdf (+ .png).
+results/noise_floor_without_zeros.pdf (+ .png).
 """
 import json
 import sys
@@ -21,9 +21,7 @@ N_BINS_WEEK = 7 * 288
 N_WEEKS = 4
 N_FULL = N_WEEKS * N_BINS_WEEK
 
-OUT_DIR = Path(
-    "/home/hamid/Downloads/new/TwoPhase_PageRank_Project/documents/walkthrough2/figures"
-)
+OUT_DIR = config.RESULTS_DIR
 OUT_PDF = OUT_DIR / "noise_floor_without_zeros.pdf"
 OUT_PNG = OUT_DIR / "noise_floor_without_zeros.png"
 

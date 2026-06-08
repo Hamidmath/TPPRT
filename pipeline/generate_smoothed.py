@@ -2,9 +2,9 @@
 Generate smoothed popularity data using graph-diffusion smoothing.
 
 Usage:
-    python generate_smoothed.py                    # gamma=0.26 (optimal, default)
+    python generate_smoothed.py                    # gamma=0.20 (paper value, default)
     python generate_smoothed.py --gamma 0.10       # gamma=0.10
-    python generate_smoothed.py --gamma 0.26 --output custom_name.npz
+    python generate_smoothed.py --gamma 0.20 --output custom_name.npz
 """
 import argparse
 import json
@@ -124,8 +124,8 @@ def process_and_save_matrix(pop_data: Dict, city_graph: Dict, output_path: str, 
 
 def main():
     parser = argparse.ArgumentParser(description='Generate smoothed popularity data')
-    parser.add_argument('--gamma', type=float, default=0.26,
-                        help='Diffusion factor (default: 0.26, optimal from cross-validation)')
+    parser.add_argument('--gamma', type=float, default=0.20,
+                        help='Diffusion factor (default: 0.20, the value used in the paper)')
     parser.add_argument('--output', type=str, default=None,
                         help='Output filename (default: auto-generated from gamma)')
     args = parser.parse_args()
@@ -136,7 +136,7 @@ def main():
         gamma_str = str(args.gamma).replace('.', '')
         output_path = config.DATA_DIR / f'popularity_results_smoothed_{gamma_str}.npz'
         # Special case: the main smoothed file (used by default)
-        if args.gamma == 0.26:
+        if args.gamma == 0.20:
             output_path = config.POPULARITY_NPZ
 
     city_graph = load_graph(str(config.GRAPH_FILE))

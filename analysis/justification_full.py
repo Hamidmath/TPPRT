@@ -48,7 +48,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import config
 from core.io import load_popularity_npz
 
-OUT = Path("/home/hamid/Downloads/new/TwoPhase_PageRank_Project/results/justification")
+OUT = config.RESULTS_DIR / "justification"
 OUT.mkdir(parents=True, exist_ok=True)
 FIGDIR = OUT / "figs"
 FIGDIR.mkdir(exist_ok=True)
