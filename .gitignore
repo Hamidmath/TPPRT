@@ -15,7 +15,6 @@ data/network_osm.pkl
 data/popularity_results_smoothed_osm_gamma020.npz
 
 # Old / alternative smoothing outputs (paper uses *_gamma020.npz only)
-data/popularity_results_smoothed_026*.npz
 data/popularity_results_smoothed_osm.npz
 data/popularity_results_smoothed_osm.bak_prev.npz
 data/popularity_results_osm.bak_prev.npz
