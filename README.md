@@ -1,4 +1,4 @@
-# Two-Phase PageRank for Link-Level Traffic Prediction
+# A Full Metro-scale Time-Dependent Traffic Route Model
 
 Link-level traffic prediction on the Salt Lake City road network from sparse
 INRIX probe trajectories. Raw GPS is map-matched to the road graph and
