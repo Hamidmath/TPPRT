@@ -21,9 +21,6 @@ DEFAULT_PARAMS = {
     'alpha_s': 0.0,
     'alpha_l': 0.0,
     'beta': 0.9,
-    'damping': 0.80,
-    'top_k': 100,
-    'top_k_boost': 1.0,
     'max_iters': 100,
     'tol': 1e-6,
 }

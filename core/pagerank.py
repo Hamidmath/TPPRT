@@ -207,10 +207,7 @@ def main():
 
     abs_err = np.abs(E_b - v_final)
     overall_mre = float(np.mean(abs_err / (E_b + 1e-9)))
-    top_idx = np.argsort(E_b)[::-1][:100]
-    top100_mre = float(np.mean(abs_err[top_idx] / (E_b[top_idx] + 1e-9)))
     logger.info(f"Overall MRE vs E_b: {overall_mre:.4f}")
-    logger.info(f"Top-100 MRE vs E_b: {top100_mre:.4f}")
 
     out = {lid: float(v_final[i]) for i, lid in enumerate(links)}
     with open(config.OUTPUT_FILE, 'w') as f:
