@@ -55,6 +55,18 @@ can forecast from.
 | diffusion smoothing | `pipeline/generate_smoothed.py` | `popularity_results_smoothed_osm_gamma020.npz` |
 | forecast chain | `core/pagerank.py` | per-link `v_up + v_down` |
 
+## Route-length distributions
+
+The model rests on how trip lengths distribute over the network. The per-trip total route length is closely geometric, which sets the chain's restart rate; splitting each trip into an up phase and a down phase lets each be matched by its own geometric, which is what the two-phase chain models.
+
+![Per-trip total route length with a geometric overlay](docs/single_phase_histogram.png)
+
+Per-trip total route length K (number of links) on the 714,594-trip matched corpus, with a single `Geom(p = 0.0508)` reference; the empirical length distribution is closely geometric.
+
+![Up-phase and down-phase length histograms with geometric overlays](docs/phase_histograms_all_K.png)
+
+The two-phase split: up-phase length (left) and down-phase length (right), each closely matched by its own geometric overlay; these fits set the phase rates `beta = 0.102` and `rho = 0.101`.
+
 ## Setup
 
 ```
